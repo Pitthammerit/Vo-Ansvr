@@ -42,6 +42,15 @@ const uploadFile = async (uri: string, fileName: string, fileType: "video" | "au
     throw error
   }
 }
+// ─── Fetch direct-upload URL + UID ────────────────────────────────────────
+async function getUploadUrl() {
+  const res = await fetch(
+    'https://yxskpbwikpoyagexkbro.supabase.co/functions/v1/get-upload-url'
+  );
+  if (!res.ok) throw new Error('Failed to fetch upload URL');
+  return await res.json(); // { uploadURL, uid }
+}
+// ──────────────────────────────────────────────────────────────────────────
 
 type Props = NativeStackScreenProps<RootStackParamList, "Record"> & {
   addConversation: (conversation: VideoConversation) => void
@@ -92,62 +101,47 @@ export default function RecordScreen({ navigation, route, addConversation, addRe
     }
   }
 
-  // Update the handleSubmit function:
-  const handleSubmit = async () => {
-    try {
-      if (isNewConversation) {
-        if (!title.trim()) {
-          Alert.alert("Error", "Please enter a title for your conversation")
-          return
-        }
+// ─── Updated handleSubmit ─────────────────────────────────────────────────
+const handleSubmit = async () => {
+  try {
+    if (type === 'text') {
+      // Save text response
+      await supabase.from('responses').insert({
+        ask_id: 'default',
+        type: 'text',
+        media_uid: textResponse,        // for text, store the text in media_uid
+      });
+    } else {
+      // 1. Get upload URL + UID
+      const { uploadURL, uid } = await getUploadUrl();
 
-        const videoUrl = "https://example.com/recorded-video.mp4"
+      // 2. Fetch the recorded file blob
+      //    Replace `recordedFileUri` with your actual URI from recording state
+      const blob = await fetch(recordedFileUri).then(res => res.blob());
 
-        // If we have a recorded video/audio, upload it
-        if (recording && type !== "text") {
-          const fileName = `question_${Date.now()}`
-          // In a real implementation, you would have the actual file URI from recording
-          // videoUrl = await uploadFile(recordedFileUri, fileName, type)
-        }
+      // 3. Upload to Cloudflare
+      await fetch(uploadURL, {
+        method: 'PUT',
+        headers: { 'Content-Type': blob.type },
+        body: blob,
+      });
 
-        const conversationData = {
-          title: title,
-          thumbnail: "https://example.com/thumbnail-new.jpg",
-          questions: [
-            {
-              videoUrl: videoUrl,
-              text: textResponse || "Video question",
-            },
-          ],
-        }
-
-        const conversationId = await addConversation(conversationData)
-        navigation.navigate("Conversation", { conversationId })
-      } else if (conversationId) {
-        let content = textResponse
-
-        // If it's a video or audio response, upload the file first
-        if (type !== "text" && recording) {
-          const fileName = `response_${Date.now()}`
-          // In a real implementation, you would have the actual file URI from recording
-          // content = await uploadFile(recordedFileUri, fileName, type)
-          content = "https://example.com/response.mp4" // Placeholder for now
-        }
-
-        const response = {
-          type,
-          content,
-        }
-
-        // For simplicity, we're assuming the first question in the conversation
-        await addResponse(conversationId, "1", response)
-        navigation.goBack()
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to save. Please try again.")
-      console.error("Error in handleSubmit:", error)
+      // 4. Store the Cloudflare UID
+      await supabase.from('responses').insert({
+        ask_id: 'default',
+        type,
+        media_uid: uid,
+      });
     }
+
+    // Navigate to a thank-you screen
+    navigation.navigate('ThankYou');
+  } catch (error: any) {
+    Alert.alert('Error', error.message || 'Upload failed');
+    console.error('handleSubmit error:', error);
   }
+};
+// ─────────────────────────────────────────────────────────────────────────────
 
   if (hasPermission === null) {
     return (
