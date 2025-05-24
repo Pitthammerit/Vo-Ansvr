@@ -42,13 +42,13 @@ const uploadFile = async (uri: string, fileName: string, fileType: "video" | "au
     throw error
   }
 }
-// ─── Fetch direct-upload URL + UID ────────────────────────────────────────
-async function getUploadUrl() {
-  const res = await fetch(
-    'https://yxskpbwikpoyagexkbro.supabase.co/functions/v1/get-upload-url'
-  );
-  if (!res.ok) throw new Error('Failed to fetch upload URL');
-  return await res.json(); // { uploadURL, uid }
+
+// ─── Fetch direct-upload URL + UID via Supabase Edge Function ────────────
+async function getUploadUrl(): Promise<{ uploadURL: string; uid: string }> {
+  // This will automatically include your anon key in the header
+  const { data, error } = await supabase.functions.invoke('get-upload-url');
+  if (error) throw new Error(error.message);
+  return data as { uploadURL: string; uid: string };
 }
 // ──────────────────────────────────────────────────────────────────────────
 
