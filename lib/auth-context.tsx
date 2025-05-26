@@ -92,6 +92,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           // Redirect to the recording page
           router.push(`${redirectUrl}?type=${recordType}`)
+        } else {
+          // Only redirect to dashboard if we're on an auth page
+          const currentPath = window.location.pathname
+          if (currentPath.startsWith("/auth/")) {
+            router.push("/dashboard")
+          }
         }
       } else if (event === "SIGNED_OUT") {
         console.log("User signed out")
@@ -101,7 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
-  }, [supabase])
+  }, [supabase, router])
 
   const signUp = async (email: string, password: string, name: string) => {
     if (!supabase) {

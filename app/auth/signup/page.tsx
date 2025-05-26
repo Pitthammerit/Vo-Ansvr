@@ -52,27 +52,27 @@ export default function SignUpPage() {
         } else {
           setError(error.message)
         }
+        setLoading(false)
       } else {
+        // For demo mode, handle redirect immediately since there's no auth state change
         if (isDemo) {
-          // Check for redirect URL in search params
           const searchParams = new URLSearchParams(window.location.search)
           const redirectTo = searchParams.get("redirect")
           const recordType = searchParams.get("type")
 
           if (redirectTo && recordType) {
-            // Redirect to the recording page with the type
             router.push(`${redirectTo}?type=${recordType}`)
           } else {
-            // Default redirect to dashboard
             router.push("/dashboard")
           }
         } else {
           setSuccess("Account created! Please check your email to confirm your account.")
+          setLoading(false)
         }
+        // For real auth, let the auth context handle the redirect via onAuthStateChange
       }
     } catch (err) {
       setError("An unexpected error occurred")
-    } finally {
       setLoading(false)
     }
   }
