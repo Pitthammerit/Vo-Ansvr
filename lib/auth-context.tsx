@@ -4,7 +4,6 @@ import type React from "react"
 
 import { createContext, useContext, useEffect, useState } from "react"
 import { createClient, type User, type Session } from "@supabase/supabase-js"
-import { useRouter } from "next/navigation"
 
 interface AuthContextType {
   user: User | null
@@ -43,7 +42,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const router = useRouter()
 
   const supabase = getSupabaseClient()
   const isDemo = !supabase
@@ -76,38 +74,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
-
-      // Handle different auth events
-      if (event === "SIGNED_IN") {
-        console.log("User signed in:", session?.user?.email)
-
-        // Check if there's a redirect URL stored
-        const redirectUrl = sessionStorage.getItem("auth_redirect_url")
-        const recordType = sessionStorage.getItem("auth_record_type")
-
-        if (redirectUrl && recordType) {
-          // Clear the stored redirect info
-          sessionStorage.removeItem("auth_redirect_url")
-          sessionStorage.removeItem("auth_record_type")
-
-          // Redirect to the recording page
-          router.push(`${redirectUrl}?type=${recordType}`)
-        } else {
-          // Only redirect to dashboard if we're on an auth page
-          const currentPath = window.location.pathname
-          if (currentPath.startsWith("/auth/")) {
-            router.push("/dashboard")
-          }
-        }
-      } else if (event === "SIGNED_OUT") {
-        console.log("User signed out")
-      } else if (event === "TOKEN_REFRESHED") {
-        console.log("Token refreshed")
-      }
     })
 
     return () => subscription.unsubscribe()
-  }, [supabase, router])
+  }, [supabase])
 
   const signUp = async (email: string, password: string, name: string) => {
     if (!supabase) {
@@ -164,15 +134,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Demo mode - just clear state
       setUser(null)
       setSession(null)
-      router.push("/")
       return
     }
 
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
-
-      router.push("/")
     } catch (error) {
       console.error("Sign out error:", error)
     }

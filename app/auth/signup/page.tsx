@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Mail, Lock, User, ArrowRight, Eye, EyeOff } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { AuthGuard } from "@/components/auth-guard"
@@ -11,7 +11,8 @@ import Link from "next/link"
 
 export default function SignUpPage() {
   const router = useRouter()
-  const { signUp, isDemo } = useAuth()
+  const searchParams = useSearchParams()
+  const { signUp, isDemo, user } = useAuth()
 
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -22,6 +23,20 @@ export default function SignUpPage() {
   const [success, setSuccess] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  // Get redirect params
+  const redirectTo = searchParams.get("redirect")
+  const recordType = searchParams.get("type")
+  const campaignId = searchParams.get("campaignId")
+
+  // If user is already logged in, redirect immediately
+  useEffect(() => {
+    if (user && redirectTo && recordType) {
+      router.push(`${redirectTo}?type=${recordType}`)
+    } else if (user && !redirectTo) {
+      router.push("/dashboard")
+    }
+  }, [user, redirectTo, recordType, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -52,27 +67,17 @@ export default function SignUpPage() {
         } else {
           setError(error.message)
         }
-        setLoading(false)
       } else {
-        // For demo mode, handle redirect immediately since there's no auth state change
-        if (isDemo) {
-          const searchParams = new URLSearchParams(window.location.search)
-          const redirectTo = searchParams.get("redirect")
-          const recordType = searchParams.get("type")
-
-          if (redirectTo && recordType) {
-            router.push(`${redirectTo}?type=${recordType}`)
-          } else {
-            router.push("/dashboard")
-          }
+        // Successful signup
+        if (redirectTo && recordType) {
+          router.push(`${redirectTo}?type=${recordType}`)
         } else {
-          setSuccess("Account created! Please check your email to confirm your account.")
-          setLoading(false)
+          router.push("/dashboard")
         }
-        // For real auth, let the auth context handle the redirect via onAuthStateChange
       }
     } catch (err) {
       setError("An unexpected error occurred")
+    } finally {
       setLoading(false)
     }
   }
@@ -95,6 +100,15 @@ export default function SignUpPage() {
         {isDemo && (
           <div className="mx-4 mb-4 p-3 bg-blue-900/20 border border-blue-700 rounded-lg">
             <p className="text-blue-300 text-sm text-center">🎭 Demo Mode - Account creation is simulated</p>
+          </div>
+        )}
+
+        {/* Show what they're trying to access */}
+        {redirectTo && recordType && (
+          <div className="mx-4 mb-4 p-3 bg-green-900/20 border border-green-700 rounded-lg">
+            <p className="text-green-300 text-sm text-center">
+              Create account to continue with your {recordType} response
+            </p>
           </div>
         )}
 
@@ -210,7 +224,10 @@ export default function SignUpPage() {
             </form>
 
             <div className="mt-6 text-center">
-              <Link href="/auth/login" className="text-[#2DAD71] hover:text-[#2DAD71]/80 text-sm">
+              <Link
+                href={`/auth/login${redirectTo && recordType ? `?redirect=${encodeURIComponent(redirectTo)}&type=${recordType}&campaignId=${campaignId}` : ""}`}
+                className="text-[#2DAD71] hover:text-[#2DAD71]/80 text-sm"
+              >
                 Already have an account? Sign in
               </Link>
             </div>

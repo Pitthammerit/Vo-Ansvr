@@ -18,15 +18,12 @@ export default function AuthPage() {
       // User is authenticated or in demo mode, proceed to recording
       router.push(`/c/${params.campaignId}/record?type=${recordType}`)
     } else {
-      // Store redirect information for after login
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem("auth_redirect_url", `/c/${params.campaignId}/record`)
-        sessionStorage.setItem("auth_record_type", recordType)
-      }
+      // Store redirect information in URL params (not sessionStorage)
+      const redirectUrl = `/c/${params.campaignId}/record`
+      const loginUrl = `/auth/login?redirect=${encodeURIComponent(redirectUrl)}&type=${recordType}&campaignId=${params.campaignId}`
 
-      // User is not authenticated, redirect to login with redirect params
-      const redirectUrl = encodeURIComponent(`/c/${params.campaignId}/record`)
-      router.push(`/auth/login?redirect=${redirectUrl}&type=${recordType}`)
+      // User is not authenticated, redirect to login
+      router.push(loginUrl)
     }
   }, [user, loading, isDemo, router, params.campaignId, recordType])
 

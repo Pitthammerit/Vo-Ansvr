@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { AuthGuard } from "@/components/auth-guard"
@@ -11,13 +11,28 @@ import Link from "next/link"
 
 export default function LoginPage() {
   const router = useRouter()
-  const { signIn, isDemo } = useAuth()
+  const searchParams = useSearchParams()
+  const { signIn, isDemo, user } = useAuth()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+
+  // Get redirect params
+  const redirectTo = searchParams.get("redirect")
+  const recordType = searchParams.get("type")
+  const campaignId = searchParams.get("campaignId")
+
+  // If user is already logged in, redirect immediately
+  useEffect(() => {
+    if (user && redirectTo && recordType) {
+      router.push(`${redirectTo}?type=${recordType}`)
+    } else if (user && !redirectTo) {
+      router.push("/dashboard")
+    }
+  }, [user, redirectTo, recordType, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,24 +44,17 @@ export default function LoginPage() {
 
       if (error) {
         setError(error.message)
-        setLoading(false)
       } else {
-        // For demo mode, handle redirect immediately since there's no auth state change
-        if (isDemo) {
-          const searchParams = new URLSearchParams(window.location.search)
-          const redirectTo = searchParams.get("redirect")
-          const recordType = searchParams.get("type")
-
-          if (redirectTo && recordType) {
-            router.push(`${redirectTo}?type=${recordType}`)
-          } else {
-            router.push("/dashboard")
-          }
+        // Successful login - redirect based on params
+        if (redirectTo && recordType) {
+          router.push(`${redirectTo}?type=${recordType}`)
+        } else {
+          router.push("/dashboard")
         }
-        // For real auth, let the auth context handle the redirect via onAuthStateChange
       }
     } catch (err) {
       setError("An unexpected error occurred")
+    } finally {
       setLoading(false)
     }
   }
@@ -69,6 +77,13 @@ export default function LoginPage() {
         {isDemo && (
           <div className="mx-4 mb-4 p-3 bg-blue-900/20 border border-blue-700 rounded-lg">
             <p className="text-blue-300 text-sm text-center">🎭 Demo Mode - Authentication is simulated</p>
+          </div>
+        )}
+
+        {/* Show what they're trying to access */}
+        {redirectTo && recordType && (
+          <div className="mx-4 mb-4 p-3 bg-green-900/20 border border-green-700 rounded-lg">
+            <p className="text-green-300 text-sm text-center">Sign in to continue with your {recordType} response</p>
           </div>
         )}
 
@@ -142,7 +157,10 @@ export default function LoginPage() {
             </form>
 
             <div className="mt-6 text-center space-y-3">
-              <Link href="/auth/signup" className="text-[#2DAD71] hover:text-[#2DAD71]/80 text-sm block w-full">
+              <Link
+                href={`/auth/signup${redirectTo && recordType ? `?redirect=${encodeURIComponent(redirectTo)}&type=${recordType}&campaignId=${campaignId}` : ""}`}
+                className="text-[#2DAD71] hover:text-[#2DAD71]/80 text-sm block w-full"
+              >
                 Don't have an account? Sign up to ANS/R<span className="text-red-500">.</span>
               </Link>
 
