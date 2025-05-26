@@ -61,48 +61,154 @@ export default function ReviewPage() {
 
   useEffect(() => {
     if (recordType !== "text") {
-      // Get recording data from global state instead of sessionStorage
+      // Get recording data from global state
       const recordingData = window.recordingData
       if (recordingData && recordingData.type === recordType) {
+        console.log("📹 Found recording data:", {
+          type: recordingData.type,
+          blobSize: recordingData.blob.size,
+          url: recordingData.url,
+        })
         setRecordedBlob(recordingData.blob)
         setRecordedUrl(recordingData.url)
       } else {
+        console.error("❌ No recording data found")
         setMediaError("No recording found")
       }
     }
   }, [recordType])
 
+  // Enhanced media element setup with better error handling
   useEffect(() => {
-    const mediaElement = recordType === "video" ? videoRef.current : audioRef.current
-    if (!mediaElement || !recordedUrl) return
+    if (!recordedUrl || recordType === "text") return
 
-    const handleCanPlay = () => {
+    const mediaElement = recordType === "video" ? videoRef.current : audioRef.current
+    if (!mediaElement) {
+      console.error("❌ Media element not found")
+      return
+    }
+
+    console.log("🔧 Setting up media element:", {
+      type: recordType,
+      url: recordedUrl,
+      element: mediaElement.tagName,
+    })
+
+    const handleLoadStart = () => {
+      console.log("📥 Media load started")
+      setMediaError(null)
+    }
+
+    const handleLoadedMetadata = () => {
+      console.log("📊 Media metadata loaded")
+    }
+
+    const handleLoadedData = () => {
+      console.log("✅ Media data loaded")
       setCanPlay(true)
       setMediaError(null)
     }
 
-    const handlePlay = () => setIsPlaying(true)
-    const handlePause = () => setIsPlaying(false)
-    const handleEnded = () => setIsPlaying(false)
-
-    const handleError = (e: Event) => {
-      console.error("Media playback error:", e)
-      setMediaError("Playback error")
-      setCanPlay(false)
+    const handleCanPlay = () => {
+      console.log("▶️ Media can play")
+      setCanPlay(true)
+      setMediaError(null)
     }
 
+    const handleCanPlayThrough = () => {
+      console.log("🎯 Media can play through")
+      setCanPlay(true)
+      setMediaError(null)
+    }
+
+    const handlePlay = () => {
+      console.log("▶️ Media started playing")
+      setIsPlaying(true)
+    }
+
+    const handlePause = () => {
+      console.log("⏸️ Media paused")
+      setIsPlaying(false)
+    }
+
+    const handleEnded = () => {
+      console.log("🏁 Media ended")
+      setIsPlaying(false)
+    }
+
+    const handleError = (e: Event) => {
+      const target = e.target as HTMLMediaElement
+      const error = target.error
+      console.error("❌ Media error:", {
+        code: error?.code,
+        message: error?.message,
+        networkState: target.networkState,
+        readyState: target.readyState,
+      })
+
+      let errorMessage = "Playback error"
+      if (error) {
+        switch (error.code) {
+          case MediaError.MEDIA_ERR_ABORTED:
+            errorMessage = "Playback aborted"
+            break
+          case MediaError.MEDIA_ERR_NETWORK:
+            errorMessage = "Network error"
+            break
+          case MediaError.MEDIA_ERR_DECODE:
+            errorMessage = "Decode error"
+            break
+          case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+            errorMessage = "Format not supported"
+            break
+          default:
+            errorMessage = "Unknown playback error"
+        }
+      }
+
+      setMediaError(errorMessage)
+      setCanPlay(false)
+      setIsPlaying(false)
+    }
+
+    const handleWaiting = () => {
+      console.log("⏳ Media waiting for data")
+    }
+
+    const handleStalled = () => {
+      console.log("🚫 Media stalled")
+    }
+
+    // Add all event listeners
+    mediaElement.addEventListener("loadstart", handleLoadStart)
+    mediaElement.addEventListener("loadedmetadata", handleLoadedMetadata)
+    mediaElement.addEventListener("loadeddata", handleLoadedData)
     mediaElement.addEventListener("canplay", handleCanPlay)
+    mediaElement.addEventListener("canplaythrough", handleCanPlayThrough)
     mediaElement.addEventListener("play", handlePlay)
     mediaElement.addEventListener("pause", handlePause)
     mediaElement.addEventListener("ended", handleEnded)
     mediaElement.addEventListener("error", handleError)
+    mediaElement.addEventListener("waiting", handleWaiting)
+    mediaElement.addEventListener("stalled", handleStalled)
+
+    // Set the source and load
+    mediaElement.src = recordedUrl
+    mediaElement.load()
 
     return () => {
+      // Remove all event listeners
+      mediaElement.removeEventListener("loadstart", handleLoadStart)
+      mediaElement.removeEventListener("loadedmetadata", handleLoadedMetadata)
+      mediaElement.removeEventListener("loadeddata", handleLoadedData)
       mediaElement.removeEventListener("canplay", handleCanPlay)
+      mediaElement.removeEventListener("canplaythrough", handleCanPlayThrough)
       mediaElement.removeEventListener("play", handlePlay)
       mediaElement.removeEventListener("pause", handlePause)
       mediaElement.removeEventListener("ended", handleEnded)
       mediaElement.removeEventListener("error", handleError)
+      mediaElement.removeEventListener("waiting", handleWaiting)
+      mediaElement.removeEventListener("stalled", handleStalled)
     }
   }, [recordedUrl, recordType])
 
@@ -144,16 +250,45 @@ export default function ReviewPage() {
   const handlePlayPause = async () => {
     try {
       const mediaElement = recordType === "video" ? videoRef.current : audioRef.current
-      if (!mediaElement) return
+      if (!mediaElement) {
+        console.error("❌ No media element found for playback")
+        return
+      }
+
+      console.log("🎮 Play/Pause clicked:", {
+        isPlaying,
+        canPlay,
+        readyState: mediaElement.readyState,
+        networkState: mediaElement.networkState,
+        paused: mediaElement.paused,
+        ended: mediaElement.ended,
+      })
 
       if (isPlaying) {
+        console.log("⏸️ Pausing media")
         mediaElement.pause()
       } else {
+        if (!canPlay) {
+          console.log("⚠️ Media not ready, attempting to load")
+          mediaElement.load()
+          // Wait a bit for load to start
+          await new Promise((resolve) => setTimeout(resolve, 100))
+        }
+
+        console.log("▶️ Playing media")
         setMediaError(null)
-        await mediaElement.play()
+
+        try {
+          await mediaElement.play()
+          console.log("✅ Play successful")
+        } catch (playError) {
+          console.error("❌ Play failed:", playError)
+          setMediaError("Could not play media - " + (playError as Error).message)
+          setCanPlay(false)
+        }
       }
     } catch (error) {
-      console.error("Playback error:", error)
+      console.error("❌ Playback error:", error)
       setMediaError("Could not play media")
       setCanPlay(false)
     }
@@ -438,11 +573,11 @@ export default function ReviewPage() {
             <div className="relative h-full">
               <video
                 ref={videoRef}
-                src={recordedUrl}
                 className="w-full h-full object-cover"
                 playsInline
                 preload="metadata"
-                muted
+                muted={false}
+                controls={false}
               />
               {/* Play/Pause Overlay */}
               <div className="absolute inset-0 flex items-center justify-center">
@@ -451,6 +586,19 @@ export default function ReviewPage() {
                     <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
                     <p className="text-white text-lg mb-2">Preview Unavailable</p>
                     <p className="text-gray-300 text-sm">{mediaError}</p>
+                    <button
+                      onClick={() => {
+                        setMediaError(null)
+                        setCanPlay(false)
+                        const video = videoRef.current
+                        if (video) {
+                          video.load()
+                        }
+                      }}
+                      className="mt-4 px-4 py-2 bg-[#2DAD71] text-white rounded"
+                    >
+                      Retry
+                    </button>
                   </div>
                 ) : (
                   <button
@@ -479,6 +627,19 @@ export default function ReviewPage() {
                     <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
                     <p className="text-white text-lg mb-2">Preview Unavailable</p>
                     <p className="text-gray-300 text-sm">{mediaError}</p>
+                    <button
+                      onClick={() => {
+                        setMediaError(null)
+                        setCanPlay(false)
+                        const audio = audioRef.current
+                        if (audio) {
+                          audio.load()
+                        }
+                      }}
+                      className="mt-4 px-4 py-2 bg-[#2DAD71] text-white rounded"
+                    >
+                      Retry
+                    </button>
                   </div>
                 ) : (
                   <button
@@ -495,7 +656,7 @@ export default function ReviewPage() {
                 )}
               </div>
 
-              <audio ref={audioRef} src={recordedUrl} preload="metadata" className="hidden" />
+              <audio ref={audioRef} preload="metadata" className="hidden" controls={false} />
             </div>
           ) : (
             <div className="h-full flex items-center justify-center">
