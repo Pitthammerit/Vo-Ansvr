@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Square, Camera, MicIcon, AlertTriangle, ThumbsUp, Wifi, WifiOff, ArrowRight } from "lucide-react"
 import { createClient } from "@supabase/supabase-js"
 import { QuoteService, type Quote as QuoteType } from "@/lib/quote-service"
+import AudioWaveform from "@/components/AudioWaveform"
 
 interface Quote {
   id: string
@@ -37,7 +38,6 @@ export default function RecordPage() {
   const [showPreviewGeneration, setShowPreviewGeneration] = useState(false)
   const [currentQuote, setCurrentQuote] = useState<QuoteType | null>(null)
   const [quoteService] = useState(() => new QuoteService())
-  const [uploadMethod, setUploadMethod] = useState<"cloudflare" | "blob">("blob")
   const [showError, setShowError] = useState(false)
   const [showDiscardWarning, setShowDiscardWarning] = useState(false)
   const [sending, setSending] = useState(false)
@@ -774,22 +774,18 @@ export default function RecordPage() {
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
             <div className="text-center w-full px-8">
-              {/* Audio Wave Visualization */}
-              <div className="flex items-center justify-center space-x-1 mb-8">
-                {[...Array(20)].map((_, i) => (
-                  <div
-                    key={i}
-                    className={`bg-red-500 rounded-full transition-all duration-300 ${
-                      isRecording ? "animate-pulse" : ""
-                    }`}
-                    style={{
-                      width: "4px",
-                      height: isRecording ? `${Math.random() * 40 + 20}px` : "20px",
-                      animationDelay: `${i * 0.1}s`,
-                    }}
-                  />
-                ))}
-              </div>
+              {/* Audio Waveform Visualization - Only show during recording */}
+              {isRecording && (
+                <div className="mb-8">
+                  <AudioWaveform state="recording" />
+                </div>
+              )}
+              {/* Show static waveform after recording stops */}
+              {!isRecording && recordedBlob && (
+                <div className="mb-8">
+                  <AudioWaveform state="idle" />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -832,6 +828,9 @@ export default function RecordPage() {
                 </div>
               ) : readyToRecord ? (
                 <div className="flex flex-col items-center">
+                  {/* Start recording text */}
+                  <p className="text-white text-sm mb-4 font-light">Start recording...</p>
+
                   <div className="relative w-20 h-20 flex items-center justify-center">
                     {/* Ready to record button with enhanced pulsing when countdown is active */}
                     <button
