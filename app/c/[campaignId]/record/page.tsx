@@ -7,18 +7,24 @@ import { createClient } from "@supabase/supabase-js"
 import { QuoteService, type Quote as QuoteType } from "@/lib/quote-service"
 import AudioWaveform from "@/components/AudioWaveform"
 
+interface Quote {
+  id: string
+  text: string
+  author: string
+}
+
 export default function RecordPage() {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
   const recordType = searchParams.get("type") as "video" | "audio" | "text"
-  const existingContent = searchParams.get("content")
+  const existingContent = searchParams.get("content") // Get existing content from URL
 
   const [isRecording, setIsRecording] = useState(false)
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null)
   const [recordingTime, setRecordingTime] = useState(0)
-  const [textResponse, setTextResponse] = useState(existingContent ? decodeURIComponent(existingContent) : "")
+  const [textResponse, setTextResponse] = useState(existingContent ? decodeURIComponent(existingContent) : "") // Initialize with existing content
   const [permissionDenied, setPermissionDenied] = useState(false)
   const [hasAttemptedRecording, setHasAttemptedRecording] = useState(false)
   const [storageError, setStorageError] = useState(false)
@@ -35,7 +41,6 @@ export default function RecordPage() {
   const [showError, setShowError] = useState(false)
   const [showDiscardWarning, setShowDiscardWarning] = useState(false)
   const [sending, setSending] = useState(false)
-  const [configError, setConfigError] = useState<string | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -46,24 +51,20 @@ export default function RecordPage() {
 
   const MAX_RECORDING_TIME = 120 // 2 minutes in seconds
   const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100MB limit
+  const CHUNK_SIZE_THRESHOLD = 1024 * 1024 // 1MB chunks
 
-  // Check configuration on mount
-  useEffect(() => {
+  // Get Supabase client
+  const getSupabaseClient = () => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    const cfAccountId = process.env.CF_ACCOUNT_ID
-    const streamApiToken = process.env.STREAM_API_TOKEN
 
     if (!supabaseUrl || !supabaseAnonKey) {
-      setConfigError("Database configuration missing")
-      return
+      console.warn("⚠️ Supabase environment variables not configured - using demo mode")
+      return null
     }
 
-    if (!cfAccountId || !streamApiToken) {
-      setConfigError("Video service configuration missing")
-      return
-    }
-  }, [])
+    return createClient(supabaseUrl, supabaseAnonKey)
+  }
 
   // Video configuration for optimal quality/performance
   const getMediaConstraints = () => {
@@ -155,8 +156,6 @@ export default function RecordPage() {
   }, [])
 
   const setupCamera = useCallback(async () => {
-    if (configError) return
-
     try {
       setPermissionDenied(false)
       setStorageError(false)
@@ -193,7 +192,7 @@ export default function RecordPage() {
 
       setPermissionDenied(true)
     }
-  }, [recordType, cleanupStorage, checkConnectionQuality, configError])
+  }, [recordType, cleanupStorage, checkConnectionQuality])
 
   const startCountdown = useCallback(() => {
     // First show "Getting ready for recording" for 1.5 seconds
@@ -344,6 +343,19 @@ export default function RecordPage() {
     return MAX_RECORDING_TIME - recordingTime
   }
 
+  const getEstimatedRate = () => {
+    if (recordingTime === 0) return ""
+    const rate = recordingSize / recordingTime
+    const perMinute = rate * 60
+    return `~${formatSize(perMinute)}/min`
+  }
+
+  const handleNext = () => {
+    if (recordType === "text" && textResponse.trim()) {
+      router.push(`/c/${params.campaignId}/review?type=text&content=${encodeURIComponent(textResponse)}`)
+    }
+  }
+
   const handleSendMessage = async () => {
     if (!textResponse.trim()) {
       setShowError(true)
@@ -353,51 +365,17 @@ export default function RecordPage() {
     setSending(true)
 
     try {
-      // Store the text message in Supabase
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      // Store the text message (you can add actual storage logic here if needed)
+      console.log("Sending text message:", textResponse)
 
-      if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error("Database configuration missing")
-      }
+      // Simulate a brief sending delay
+      await new Promise((resolve) => setTimeout(resolve, 500))
 
-      const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-      // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) {
-        throw new Error("User not authenticated")
-      }
-
-      // Create conversation
-      const { data: conversation, error: convError } = await supabase
-        .from("conversations")
-        .insert({
-          campaign_id: params.campaignId,
-          user_id: user.id,
-        })
-        .select()
-        .single()
-
-      if (convError) throw convError
-
-      // Create message
-      const { error: messageError } = await supabase.from("messages").insert({
-        conversation_id: conversation.id,
-        sender_type: "user",
-        message_type: "text",
-        content: textResponse,
-      })
-
-      if (messageError) throw messageError
-
-      // Navigate to thanks page
-      router.push(`/c/${params.campaignId}/thanks?mediaId=${conversation.id}&type=text`)
+      // Navigate directly to thanks page, skipping review and upload
+      router.push(`/c/${params.campaignId}/thanks?mediaId=${encodeURIComponent(textResponse)}&type=text`)
     } catch (error) {
       console.error("Error sending message:", error)
-      setShowError(true)
+      alert("Failed to send message. Please try again.")
     } finally {
       setSending(false)
     }
@@ -434,11 +412,11 @@ export default function RecordPage() {
 
   // Setup camera on mount for video/audio
   useEffect(() => {
-    if (recordType !== "text" && !hasAttemptedRecording && !configError) {
+    if (recordType !== "text" && !hasAttemptedRecording) {
       setHasAttemptedRecording(true)
       setupCamera()
     }
-  }, [recordType, setupCamera, hasAttemptedRecording, configError])
+  }, [recordType, setupCamera, hasAttemptedRecording])
 
   useEffect(() => {
     const initializeQuotes = async () => {
@@ -539,26 +517,6 @@ export default function RecordPage() {
     oscillator3.stop(stopTime)
   }
 
-  // Show configuration error
-  if (configError) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <AlertTriangle className="w-16 h-16 text-red-400 mx-auto mb-6" />
-          <h2 className="text-2xl font-bold text-white mb-4">Configuration Error</h2>
-          <p className="text-gray-300 mb-6">{configError}</p>
-          <button
-            onClick={() => router.back()}
-            className="bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-semibold py-3 px-6 transition-all"
-            style={{ borderRadius: "6px" }}
-          >
-            Go Back
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   if (recordType === "text") {
     return (
       <div className="flex flex-col h-screen bg-black text-white">
@@ -632,9 +590,7 @@ export default function RecordPage() {
 
           {showError && (
             <p className="text-red-500 text-sm text-center">
-              {textResponse.trim()
-                ? "Failed to send message. Please try again."
-                : "You didn't write anything yet. Go ahead - don't hold back!"}
+              You didn't write anything yet. Go ahead - don't hold back!
             </p>
           )}
         </div>
