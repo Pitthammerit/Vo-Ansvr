@@ -15,7 +15,8 @@ interface AuthContextType {
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<{ error: any }>
   updateProfile: (data: { name?: string; email?: string }) => Promise<{ error: any }>
-  isDemo: boolean
+  isAuthenticated: boolean
+  supabase: any
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -28,44 +29,53 @@ export function useAuth() {
   return context
 }
 
-function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return null
-  }
-
-  return createClient(supabaseUrl, supabaseAnonKey)
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
-  const supabase = getSupabaseClient()
-  const isDemo = !supabase
+  // Initialize Supabase client
+  const supabase = (() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn("⚠️ Supabase environment variables not configured - auth disabled")
+      return null
+    }
+
+    return createClient(supabaseUrl, supabaseAnonKey)
+  })()
 
   useEffect(() => {
     if (!supabase) {
-      // Demo mode - create a mock user
-      setUser({
-        id: "demo-user",
-        email: "demo@ansvr.app",
-        user_metadata: { name: "Demo User" },
-      } as User)
       setLoading(false)
       return
     }
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    const getInitialSession = async () => {
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
+
+        if (error) {
+          console.error("Error getting session:", error)
+        } else {
+          setSession(session)
+          setUser(session?.user ?? null)
+        }
+      } catch (error) {
+        console.error("Error in getInitialSession:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    getInitialSession()
 
     // Listen for auth changes
     const {
@@ -78,21 +88,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
 
       // Handle different auth events
-      if (event === "SIGNED_IN") {
-        console.log("User signed in:", session?.user?.email)
-      } else if (event === "SIGNED_OUT") {
-        console.log("User signed out")
-      } else if (event === "TOKEN_REFRESHED") {
-        console.log("Token refreshed")
+      switch (event) {
+        case "SIGNED_IN":
+          console.log("User signed in:", session?.user?.email)
+          break
+        case "SIGNED_OUT":
+          console.log("User signed out")
+          break
+        case "TOKEN_REFRESHED":
+          console.log("Token refreshed")
+          break
+        case "USER_UPDATED":
+          console.log("User updated")
+          break
+        case "PASSWORD_RECOVERY":
+          console.log("Password recovery initiated")
+          break
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [supabase])
 
   const signUp = async (email: string, password: string, name: string) => {
     if (!supabase) {
-      return { error: null } // Demo mode
+      return { error: { message: "Authentication not available in demo mode" } }
     }
 
     try {
@@ -102,27 +124,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: {
           data: {
             name: name,
+            full_name: name,
           },
         },
       })
 
-      if (error) throw error
+      if (error) {
+        console.error("Sign up error:", error)
+        return { error }
+      }
 
-      // If user needs email confirmation
+      // If user is created but not confirmed, they need to check email
       if (data.user && !data.session) {
-        return { error: { message: "Please check your email to confirm your account" } }
+        console.log("User created, email confirmation required")
       }
 
       return { error: null }
     } catch (error) {
-      console.error("Sign up error:", error)
-      return { error }
+      console.error("Unexpected sign up error:", error)
+      return { error: { message: "An unexpected error occurred" } }
     }
   }
 
   const signIn = async (email: string, password: string) => {
     if (!supabase) {
-      return { error: null } // Demo mode
+      return { error: { message: "Authentication not available in demo mode" } }
     }
 
     try {
@@ -131,31 +157,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
       })
 
-      if (error) throw error
+      if (error) {
+        console.error("Sign in error:", error)
+        return { error }
+      }
 
+      console.log("Sign in successful:", data.user?.email)
       return { error: null }
     } catch (error) {
-      console.error("Sign in error:", error)
-      return { error }
+      console.error("Unexpected sign in error:", error)
+      return { error: { message: "An unexpected error occurred" } }
     }
   }
 
   const signOut = async () => {
     if (!supabase) {
-      // Demo mode - just clear state
-      setUser(null)
-      setSession(null)
-      router.push("/")
       return
     }
 
     try {
       const { error } = await supabase.auth.signOut()
-      if (error) throw error
-
-      router.push("/")
+      if (error) {
+        console.error("Sign out error:", error)
+      } else {
+        console.log("Sign out successful")
+        // Clear any local state
+        setUser(null)
+        setSession(null)
+        // Redirect to home
+        router.push("/")
+      }
     } catch (error) {
-      console.error("Sign out error:", error)
+      console.error("Unexpected sign out error:", error)
     }
   }
 
@@ -169,12 +202,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         redirectTo: `${window.location.origin}/auth/reset-password`,
       })
 
-      if (error) throw error
+      if (error) {
+        console.error("Password reset error:", error)
+        return { error }
+      }
 
       return { error: null }
     } catch (error) {
-      console.error("Password reset error:", error)
-      return { error }
+      console.error("Unexpected password reset error:", error)
+      return { error: { message: "An unexpected error occurred" } }
     }
   }
 
@@ -186,15 +222,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { error } = await supabase.auth.updateUser({
         email: data.email,
-        data: { name: data.name },
+        data: {
+          name: data.name,
+          full_name: data.name,
+        },
       })
 
-      if (error) throw error
+      if (error) {
+        console.error("Profile update error:", error)
+        return { error }
+      }
 
       return { error: null }
     } catch (error) {
-      console.error("Profile update error:", error)
-      return { error }
+      console.error("Unexpected profile update error:", error)
+      return { error: { message: "An unexpected error occurred" } }
     }
   }
 
@@ -207,7 +249,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     resetPassword,
     updateProfile,
-    isDemo,
+    isAuthenticated: !!user,
+    supabase,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

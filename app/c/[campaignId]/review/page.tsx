@@ -5,19 +5,19 @@ import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Play, Pause, AlertCircle, Check, X } from "lucide-react"
 import { QuoteService, type Quote } from "@/lib/quote-service"
 import AudioWaveform from "@/components/AudioWaveform"
-import { createClient } from "@supabase/supabase-js"
+import { useAuth } from "@/lib/auth-context"
 
-const getSupabaseClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+// const getSupabaseClient = () => {
+//   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+//   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn("⚠️ Supabase environment variables not configured - using demo mode")
-    return null
-  }
+//   if (!supabaseUrl || !supabaseAnonKey) {
+//     console.warn("⚠️ Supabase environment variables not configured - using demo mode")
+//     return null
+//   }
 
-  return createClient(supabaseUrl, supabaseAnonKey)
-}
+//   return createClient(supabaseUrl, supabaseAnonKey)
+// }
 
 // Extend window type for recording data
 declare global {
@@ -51,6 +51,9 @@ export default function ReviewPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const [uploadStartTime, setUploadStartTime] = useState<number | null>(null)
+
+  // Get Supabase client
+  const { supabase, user } = useAuth()
 
   // Initialize quotes on component mount
   useEffect(() => {

@@ -4,18 +4,14 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Mail, Lock, User, ArrowRight, Eye, EyeOff } from "lucide-react"
+import { ArrowLeft, Lock, ArrowRight, Eye, EyeOff } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
-import Link from "next/link"
 
-export default function SignupPage() {
+export default function ResetPasswordPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { signUp, loading: authLoading, isAuthenticated } = useAuth()
-  const redirectTo = searchParams.get("redirect") || "/dashboard"
+  const { supabase } = useAuth()
 
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -24,12 +20,15 @@ export default function SignupPage() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
 
-  // Redirect if already authenticated
+  // Check if we have the required tokens
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      router.push(decodeURIComponent(redirectTo))
+    const accessToken = searchParams.get("access_token")
+    const refreshToken = searchParams.get("refresh_token")
+
+    if (!accessToken || !refreshToken) {
+      setError("Invalid reset link. Please request a new password reset.")
     }
-  }, [authLoading, isAuthenticated, router, redirectTo])
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,26 +49,28 @@ export default function SignupPage() {
       return
     }
 
-    const { error } = await signUp(email, password, name)
-
-    if (error) {
-      setError(error.message)
+    if (!supabase) {
+      setError("Password reset not available in demo mode")
       setLoading(false)
-    } else {
-      setSuccess(true)
+      return
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: password,
+      })
+
+      if (error) {
+        setError(error.message)
+        setLoading(false)
+      } else {
+        setSuccess(true)
+        setLoading(false)
+      }
+    } catch (error) {
+      setError("An unexpected error occurred")
       setLoading(false)
     }
-  }
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading...</p>
-        </div>
-      </div>
-    )
   }
 
   if (success) {
@@ -90,41 +91,22 @@ export default function SignupPage() {
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="w-full max-w-md text-center">
             <div className="w-16 h-16 bg-[#2DAD71] rounded-full flex items-center justify-center mx-auto mb-6">
-              <Mail className="w-8 h-8 text-white" />
+              <Lock className="w-8 h-8 text-white" />
             </div>
 
-            <h1 className="text-2xl font-bold text-white mb-4">Check your email!</h1>
+            <h1 className="text-2xl font-bold text-white mb-4">Password updated!</h1>
 
             <p className="text-gray-400 text-sm mb-6 leading-relaxed">
-              We've sent a confirmation link to <strong className="text-white">{email}</strong>. Please check your email
-              and click the link to activate your account.
+              Your password has been successfully updated. You can now sign in with your new password.
             </p>
 
-            <div className="space-y-3">
-              <button
-                onClick={() => router.push("/auth/login")}
-                className="w-full bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-semibold py-3 px-6 transition-all"
-                style={{ borderRadius: "6px" }}
-              >
-                Go to Sign In
-              </button>
-
-              <p className="text-gray-500 text-xs">
-                Didn't receive the email? Check your spam folder or{" "}
-                <button
-                  onClick={() => {
-                    setSuccess(false)
-                    setEmail("")
-                    setPassword("")
-                    setConfirmPassword("")
-                    setName("")
-                  }}
-                  className="text-[#2DAD71] hover:text-[#2DAD71]/80 underline"
-                >
-                  try again
-                </button>
-              </p>
-            </div>
+            <button
+              onClick={() => router.push("/auth/login")}
+              className="w-full bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-semibold py-3 px-6 transition-all"
+              style={{ borderRadius: "6px" }}
+            >
+              Sign In
+            </button>
           </div>
         </div>
       </div>
@@ -135,7 +117,7 @@ export default function SignupPage() {
     <div className="min-h-screen bg-black text-white flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4">
-        <button onClick={() => router.back()} className="text-white">
+        <button onClick={() => router.push("/auth/login")} className="text-white">
           <ArrowLeft className="w-6 h-6" />
         </button>
         <div className="text-white font-bold text-lg">
@@ -144,50 +126,20 @@ export default function SignupPage() {
         <div className="w-6" />
       </div>
 
-      {/* Signup Form */}
+      {/* Reset Password Form */}
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-white mb-2">
-              Welcome to ANS/R<span className="text-red-500">.</span>
-            </h1>
-            <p className="text-gray-400 text-sm">Create your account to get started</p>
+            <h1 className="text-2xl font-bold text-white mb-2">Reset your password</h1>
+            <p className="text-gray-400 text-sm">Enter your new password below.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Full Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full bg-gray-900 text-white pl-12 pr-4 py-3 border border-gray-700 focus:border-[#2DAD71] focus:outline-none"
-                style={{ borderRadius: "6px" }}
-                required
-                disabled={loading}
-              />
-            </div>
-
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-gray-900 text-white pl-12 pr-4 py-3 border border-gray-700 focus:border-[#2DAD71] focus:outline-none"
-                style={{ borderRadius: "6px" }}
-                required
-                disabled={loading}
-              />
-            </div>
-
-            <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type={showPassword ? "text" : "password"}
-                placeholder="Password"
+                placeholder="New Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-gray-900 text-white pl-12 pr-12 py-3 border border-gray-700 focus:border-[#2DAD71] focus:outline-none"
@@ -210,7 +162,7 @@ export default function SignupPage() {
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type={showConfirmPassword ? "text" : "password"}
-                placeholder="Confirm Password"
+                placeholder="Confirm New Password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="w-full bg-gray-900 text-white pl-12 pr-12 py-3 border border-gray-700 focus:border-[#2DAD71] focus:outline-none"
@@ -244,28 +196,16 @@ export default function SignupPage() {
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  Creating account...
+                  Updating...
                 </>
               ) : (
                 <>
-                  Create Account
+                  Update Password
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
-
-          <div className="mt-6 text-center">
-            <Link href="/auth/login" className="text-[#2DAD71] hover:text-[#2DAD71]/80 text-sm block w-full">
-              Already have an account? Sign in
-            </Link>
-          </div>
-
-          <div className="mt-6 text-center">
-            <p className="text-gray-500 text-xs leading-relaxed">
-              By creating an account, you agree to our Terms of Service and Privacy Policy.
-            </p>
-          </div>
         </div>
       </div>
     </div>
