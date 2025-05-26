@@ -2,102 +2,113 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/lib/auth-context"
-import { ProtectedRoute } from "@/components/auth/protected-route"
+import { AuthGuard } from "@/components/auth-guard"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LogOut, User, Video, MessageSquare, Settings, Plus } from "lucide-react"
 import Link from "next/link"
+import { createClient } from "@supabase/supabase-js"
 
-interface UserConversation {
+interface UserResponse {
   id: string
-  title: string
+  type: "video" | "audio" | "text"
+  content: string
   created_at: string
-  campaign_id: string
-  message_count: number
+  campaign_name?: string
 }
 
 export default function DashboardPage() {
-  const { user, signOut, supabase } = useAuth()
-  const [conversations, setConversations] = useState<UserConversation[]>([])
+  const { user, signOut, isDemo } = useAuth()
+  const [responses, setResponses] = useState<UserResponse[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (supabase && user) {
-      fetchUserConversations()
-    } else {
-      // Demo mode - show mock data
-      setConversations([
+    if (isDemo) {
+      // Mock data for demo mode
+      setResponses([
         {
-          id: "demo-1",
-          title: "Demo Campaign Response",
+          id: "1",
+          type: "video",
+          content: "demo-video-1",
           created_at: new Date().toISOString(),
-          campaign_id: "demo",
-          message_count: 1,
+          campaign_name: "Demo Campaign",
+        },
+        {
+          id: "2",
+          type: "text",
+          content: "This is a demo text response",
+          created_at: new Date(Date.now() - 86400000).toISOString(),
+          campaign_name: "Demo Campaign",
         },
       ])
       setLoading(false)
+      return
     }
-  }, [supabase, user])
 
-  const fetchUserConversations = async () => {
-    if (!supabase || !user) return
+    // Load user responses from Supabase
+    loadUserResponses()
+  }, [isDemo])
 
+  const loadUserResponses = async () => {
     try {
-      const { data, error } = await supabase
-        .from("conversations")
-        .select(
-          `
-          id,
-          created_at,
-          campaigns!inner(id, name),
-          messages(count)
-        `,
-        )
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-      if (error) {
-        console.error("Error fetching conversations:", error)
-      } else {
-        const formattedConversations = data?.map((conv: any) => ({
-          id: conv.id,
-          title: conv.campaigns.name,
-          created_at: conv.created_at,
-          campaign_id: conv.campaigns.id,
-          message_count: conv.messages?.length || 0,
-        }))
-        setConversations(formattedConversations || [])
-      }
+      if (!supabaseUrl || !supabaseAnonKey) return
+
+      const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+      // This would need to be implemented based on your database schema
+      // For now, we'll use mock data
+      setResponses([])
     } catch (error) {
-      console.error("Error fetching conversations:", error)
+      console.error("Error loading responses:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSignOut = async () => {
-    await signOut()
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+
+  const getResponseIcon = (type: string) => {
+    switch (type) {
+      case "video":
+        return <Video className="w-4 h-4" />
+      case "audio":
+        return <Video className="w-4 h-4" />
+      case "text":
+        return <MessageSquare className="w-4 h-4" />
+      default:
+        return <MessageSquare className="w-4 h-4" />
+    }
   }
 
   return (
-    <ProtectedRoute>
+    <AuthGuard requireAuth={true}>
       <div className="min-h-screen bg-black text-white">
         {/* Header */}
         <div className="border-b border-gray-800">
-          <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="max-w-6xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="text-white font-bold text-xl">
                 ANS/R<span className="text-red-500">.</span>
               </div>
-
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 text-sm text-gray-400">
+                <div className="flex items-center gap-2 text-gray-300">
                   <User className="w-4 h-4" />
-                  <span>{user?.user_metadata?.name || user?.email}</span>
+                  <span className="text-sm">{user?.user_metadata?.name || user?.email}</span>
+                  {isDemo && <span className="text-xs text-blue-400">(Demo)</span>}
                 </div>
-
                 <Button
-                  onClick={handleSignOut}
+                  onClick={signOut}
                   variant="outline"
                   size="sm"
                   className="border-gray-600 text-gray-300 hover:bg-gray-800"
@@ -111,113 +122,122 @@ export default function DashboardPage() {
         </div>
 
         {/* Main Content */}
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          {/* Welcome Section */}
+        <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">
-              Welcome back, {user?.user_metadata?.name?.split(" ")[0] || "there"}!
-            </h1>
-            <p className="text-gray-400">Manage your video conversations and responses.</p>
+            <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
+            <p className="text-gray-400">Manage your responses and account settings</p>
           </div>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card className="bg-gray-900 border-gray-700">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  Total Conversations
-                </CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-400">Total Responses</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-white">{conversations.length}</div>
+                <div className="text-2xl font-bold text-white">{responses.length}</div>
               </CardContent>
             </Card>
 
             <Card className="bg-gray-900 border-gray-700">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                  <Video className="w-4 h-4" />
-                  Total Messages
-                </CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-400">Video Responses</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-white">
-                  {conversations.reduce((sum, conv) => sum + conv.message_count, 0)}
+                  {responses.filter((r) => r.type === "video").length}
                 </div>
               </CardContent>
             </Card>
 
             <Card className="bg-gray-900 border-gray-700">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                  <Settings className="w-4 h-4" />
-                  Account Status
-                </CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-400">Text Responses</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-[#2DAD71]">Active</div>
+                <div className="text-2xl font-bold text-white">{responses.filter((r) => r.type === "text").length}</div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Conversations List */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">Your Conversations</h2>
+          {/* Quick Actions */}
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-white mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <Link href="/c/demo">
-                <Button className="bg-[#2DAD71] hover:bg-[#2DAD71]/90">
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Response
-                </Button>
+                <Card className="bg-gray-900 border-gray-700 hover:bg-gray-800 transition-colors cursor-pointer">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3">
+                      <Plus className="w-6 h-6 text-[#2DAD71]" />
+                      <div>
+                        <h3 className="font-semibold text-white">New Response</h3>
+                        <p className="text-sm text-gray-400">Record a new video response</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link href="/profile">
+                <Card className="bg-gray-900 border-gray-700 hover:bg-gray-800 transition-colors cursor-pointer">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3">
+                      <Settings className="w-6 h-6 text-[#2DAD71]" />
+                      <div>
+                        <h3 className="font-semibold text-white">Profile Settings</h3>
+                        <p className="text-sm text-gray-400">Update your account information</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </Link>
             </div>
+          </div>
 
+          {/* Recent Responses */}
+          <div>
+            <h2 className="text-xl font-bold text-white mb-4">Recent Responses</h2>
             {loading ? (
               <div className="text-center py-8">
                 <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-gray-400">Loading conversations...</p>
+                <p className="text-gray-400">Loading responses...</p>
               </div>
-            ) : conversations.length === 0 ? (
+            ) : responses.length === 0 ? (
               <Card className="bg-gray-900 border-gray-700">
-                <CardContent className="text-center py-8">
+                <CardContent className="p-8 text-center">
                   <MessageSquare className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-white mb-2">No conversations yet</h3>
-                  <p className="text-gray-400 mb-4">Start by responding to a campaign.</p>
+                  <h3 className="text-lg font-semibold text-white mb-2">No responses yet</h3>
+                  <p className="text-gray-400 mb-4">Start by recording your first response</p>
                   <Link href="/c/demo">
                     <Button className="bg-[#2DAD71] hover:bg-[#2DAD71]/90">
                       <Plus className="w-4 h-4 mr-2" />
-                      Get Started
+                      Create Response
                     </Button>
                   </Link>
                 </CardContent>
               </Card>
             ) : (
               <div className="space-y-4">
-                {conversations.map((conversation) => (
-                  <Card
-                    key={conversation.id}
-                    className="bg-gray-900 border-gray-700 hover:border-gray-600 transition-colors"
-                  >
+                {responses.map((response) => (
+                  <Card key={response.id} className="bg-gray-900 border-gray-700">
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-lg font-medium text-white mb-1">{conversation.title}</h3>
-                          <p className="text-sm text-gray-400">
-                            {new Date(conversation.created_at).toLocaleDateString()} • {conversation.message_count}{" "}
-                            message{conversation.message_count !== 1 ? "s" : ""}
-                          </p>
+                        <div className="flex items-center gap-3">
+                          {getResponseIcon(response.type)}
+                          <div>
+                            <h3 className="font-semibold text-white capitalize">{response.type} Response</h3>
+                            <p className="text-sm text-gray-400">{response.campaign_name}</p>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-gray-600 text-gray-300 hover:bg-gray-800"
-                          >
-                            View
-                          </Button>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-400">{formatDate(response.created_at)}</p>
                         </div>
                       </div>
+                      {response.type === "text" && (
+                        <div className="mt-3 p-3 bg-gray-800 rounded-lg">
+                          <p className="text-gray-300 text-sm">{response.content}</p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
@@ -226,6 +246,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-    </ProtectedRoute>
+    </AuthGuard>
   )
 }

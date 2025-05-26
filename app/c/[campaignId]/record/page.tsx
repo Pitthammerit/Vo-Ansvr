@@ -3,9 +3,9 @@
 import { useState, useRef, useCallback, useEffect } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Square, Camera, MicIcon, AlertTriangle, ThumbsUp, Wifi, WifiOff, ArrowRight } from "lucide-react"
+import { createClient } from "@supabase/supabase-js"
 import { QuoteService, type Quote as QuoteType } from "@/lib/quote-service"
 import AudioWaveform from "@/components/AudioWaveform"
-import { useAuth } from "@/components/providers/AuthProvider"
 
 interface Quote {
   id: string
@@ -54,7 +54,17 @@ export default function RecordPage() {
   const CHUNK_SIZE_THRESHOLD = 1024 * 1024 // 1MB chunks
 
   // Get Supabase client
-  const { supabase, user } = useAuth()
+  const getSupabaseClient = () => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn("⚠️ Supabase environment variables not configured - using demo mode")
+      return null
+    }
+
+    return createClient(supabaseUrl, supabaseAnonKey)
+  }
 
   // Video configuration for optimal quality/performance
   const getMediaConstraints = () => {
@@ -767,13 +777,13 @@ export default function RecordPage() {
             <div className="text-center w-full px-8">
               {/* Audio Waveform Visualization - Only show during recording */}
               {isRecording && (
-                <div className="mb-8">
+                <div className="mb-12 px-4">
                   <AudioWaveform state="recording" />
                 </div>
               )}
               {/* Show static waveform after recording stops */}
               {!isRecording && recordedBlob && (
-                <div className="mb-8">
+                <div className="mb-12 px-4">
                   <AudioWaveform state="idle" />
                 </div>
               )}

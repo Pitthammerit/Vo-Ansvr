@@ -9,26 +9,29 @@ export default function AuthPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const recordType = searchParams.get("type") as "video" | "audio" | "text"
-  const { isAuthenticated, loading } = useAuth()
+  const { user, loading, isDemo } = useAuth()
 
   useEffect(() => {
     if (loading) return
 
-    if (isAuthenticated) {
-      // User is already authenticated, redirect to recording
+    if (user || isDemo) {
+      // User is authenticated or in demo mode, proceed to recording
       router.push(`/c/${params.campaignId}/record?type=${recordType}`)
     } else {
-      // User needs to authenticate, redirect to login with return path
-      const returnPath = `/c/${params.campaignId}/record?type=${recordType}`
-      router.push(`/auth/login?redirect=${encodeURIComponent(returnPath)}`)
+      // User is not authenticated, redirect to login
+      router.push(`/auth/login?redirect=/c/${params.campaignId}/record&type=${recordType}`)
     }
-  }, [isAuthenticated, loading, router, params.campaignId, recordType])
+  }, [user, loading, isDemo, router, params.campaignId, recordType])
 
+  // Show loading while checking auth
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center">
       <div className="text-center">
+        <div className="text-white font-bold text-2xl mb-4">
+          ANS/R<span className="text-red-500">.</span>
+        </div>
         <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-gray-400">Redirecting...</p>
+        <p className="text-gray-400">Checking authentication...</p>
       </div>
     </div>
   )

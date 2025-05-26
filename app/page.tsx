@@ -2,19 +2,27 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/lib/auth-context"
 
 export default function HomePage() {
   const router = useRouter()
+  const { user, loading, isDemo } = useAuth()
 
   useEffect(() => {
-    // Simple redirect to demo campaign without database checks
-    // This works better in preview environments
+    if (loading) return
+
     const timer = setTimeout(() => {
-      router.push("/c/demo")
-    }, 1000) // Small delay to show the loading screen
+      if (user || isDemo) {
+        // User is authenticated, go to dashboard
+        router.push("/dashboard")
+      } else {
+        // User is not authenticated, go to demo campaign
+        router.push("/c/demo")
+      }
+    }, 1000)
 
     return () => clearTimeout(timer)
-  }, [router])
+  }, [router, user, loading, isDemo])
 
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center">
