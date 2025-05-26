@@ -30,7 +30,18 @@ export default function LoginPage() {
       if (error) {
         setError(error.message)
       } else {
-        router.push("/dashboard")
+        // Check for redirect URL in search params
+        const searchParams = new URLSearchParams(window.location.search)
+        const redirectTo = searchParams.get("redirect")
+        const recordType = searchParams.get("type")
+
+        if (redirectTo && recordType) {
+          // Redirect to the recording page with the type
+          router.push(`${redirectTo}?type=${recordType}`)
+        } else {
+          // Default redirect to dashboard
+          router.push("/dashboard")
+        }
       }
     } catch (err) {
       setError("An unexpected error occurred")

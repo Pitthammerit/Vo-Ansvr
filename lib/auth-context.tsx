@@ -80,6 +80,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Handle different auth events
       if (event === "SIGNED_IN") {
         console.log("User signed in:", session?.user?.email)
+
+        // Check if there's a redirect URL stored
+        const redirectUrl = sessionStorage.getItem("auth_redirect_url")
+        const recordType = sessionStorage.getItem("auth_record_type")
+
+        if (redirectUrl && recordType) {
+          // Clear the stored redirect info
+          sessionStorage.removeItem("auth_redirect_url")
+          sessionStorage.removeItem("auth_record_type")
+
+          // Redirect to the recording page
+          router.push(`${redirectUrl}?type=${recordType}`)
+        }
       } else if (event === "SIGNED_OUT") {
         console.log("User signed out")
       } else if (event === "TOKEN_REFRESHED") {
