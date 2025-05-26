@@ -2,22 +2,10 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Mail, Lock, User, ArrowRight } from "lucide-react"
+import { ArrowLeft, Mail, Lock, User, ArrowRight, AlertTriangle } from "lucide-react"
 import { createClient } from "@supabase/supabase-js"
-
-const getSupabaseClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn("⚠️ Supabase environment variables not configured")
-    return null
-  }
-
-  return createClient(supabaseUrl, supabaseAnonKey)
-}
 
 export default function AuthPage() {
   const params = useParams()
@@ -32,22 +20,44 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [configError, setConfigError] = useState<string | null>(null)
+  const [supabase, setSupabase] = useState<any>(null)
 
-  const supabase = getSupabaseClient()
+  useEffect(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      setConfigError("Database configuration missing. Please contact support.")
+      return
+    }
+
+    // Validate environment variables format
+    if (!supabaseUrl.startsWith("https://") || !supabaseAnonKey.startsWith("eyJ")) {
+      setConfigError("Invalid database configuration. Please contact support.")
+      return
+    }
+
+    try {
+      const client = createClient(supabaseUrl, supabaseAnonKey)
+      setSupabase(client)
+    } catch (err) {
+      setConfigError("Failed to initialize database connection. Please contact support.")
+    }
+  }, [])
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!supabase) {
+      setError("Database connection not available")
+      return
+    }
+
     setLoading(true)
     setError("")
 
     try {
-      if (!supabase) {
-        // Demo mode - skip auth and go directly to recording
-        console.log("🎭 Demo mode: Skipping authentication")
-        router.push(`/c/${params.campaignId}/record?type=${recordType}`)
-        return
-      }
-
       if (isLogin) {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
@@ -90,7 +100,7 @@ export default function AuthPage() {
     }
 
     if (!supabase) {
-      setError("Password reset not available in demo mode")
+      setError("Database connection not available")
       return
     }
 
@@ -111,6 +121,26 @@ export default function AuthPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Show configuration error
+  if (configError) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <AlertTriangle className="w-16 h-16 text-red-400 mx-auto mb-6" />
+          <h2 className="text-2xl font-bold text-white mb-4">Configuration Error</h2>
+          <p className="text-gray-300 mb-6">{configError}</p>
+          <button
+            onClick={() => router.back()}
+            className="bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-semibold py-3 px-6 transition-all"
+            style={{ borderRadius: "6px" }}
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -195,7 +225,7 @@ export default function AuthPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !supabase}
               className="w-full bg-[#2DAD71] hover:bg-[#2DAD71]/90 disabled:bg-gray-600 text-white font-semibold py-3 px-6 transition-all flex items-center justify-center gap-2"
               style={{ borderRadius: "6px" }}
             >
@@ -227,7 +257,7 @@ export default function AuthPage() {
             {isLogin && (
               <button
                 onClick={handleForgotPassword}
-                disabled={loading}
+                disabled={loading || !supabase}
                 className="text-gray-400 hover:text-gray-300 text-xs underline"
                 style={{ textDecorationThickness: "2px" }}
               >

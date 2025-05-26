@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Play, Video, Mic, Type } from "lucide-react"
+import { Play, Video, Mic, Type, AlertTriangle } from "lucide-react"
 
 export default function CampaignPage() {
   const params = useParams()
@@ -14,6 +14,7 @@ export default function CampaignPage() {
   const [userInitiatedPlay, setUserInitiatedPlay] = useState(false)
   const [showThumbnail, setShowThumbnail] = useState(false)
   const [videoLoaded, setVideoLoaded] = useState(false)
+  const [configError, setConfigError] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
 
   // Welcome video ID from Cloudflare
@@ -21,9 +22,26 @@ export default function CampaignPage() {
   const videoUrl = `https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${welcomeVideoId}/manifest/video.m3u8`
   const posterUrl = `https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${welcomeVideoId}/thumbnails/thumbnail.jpg?time=0s`
 
+  // Check configuration on mount
+  useEffect(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      setConfigError("Application not configured. Please contact support.")
+      return
+    }
+
+    // Validate environment variables format
+    if (!supabaseUrl.startsWith("https://") || !supabaseAnonKey.startsWith("eyJ")) {
+      setConfigError("Invalid configuration. Please contact support.")
+      return
+    }
+  }, [])
+
   useEffect(() => {
     const video = videoRef.current
-    if (!video) return
+    if (!video || configError) return
 
     const updateTime = () => setCurrentTime(video.currentTime)
     const updateDuration = () => setDuration(video.duration)
@@ -90,9 +108,11 @@ export default function CampaignPage() {
       video.removeEventListener("play", handlePlay)
       video.removeEventListener("pause", handlePause)
     }
-  }, [hasPlayedPreview, userInitiatedPlay])
+  }, [hasPlayedPreview, userInitiatedPlay, configError])
 
   const handlePlayClick = () => {
+    if (configError) return
+
     const video = videoRef.current
     if (!video) return
 
@@ -112,18 +132,22 @@ export default function CampaignPage() {
   }
 
   const handleResponseType = (type: "video" | "audio" | "text") => {
-    // Check if we have Supabase configured
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (configError) return
+    router.push(`/c/${params.campaignId}/auth?type=${type}`)
+  }
 
-    if (!supabaseUrl || !supabaseAnonKey) {
-      // Demo mode - skip auth and go directly to recording
-      console.log("🎭 Demo mode: Skipping authentication")
-      router.push(`/c/${params.campaignId}/record?type=${type}`)
-    } else {
-      // Production mode - go through auth
-      router.push(`/c/${params.campaignId}/auth?type=${type}`)
-    }
+  // Show configuration error
+  if (configError) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <AlertTriangle className="w-16 h-16 text-red-400 mx-auto mb-6" />
+          <h2 className="text-2xl font-bold text-white mb-4">Configuration Required</h2>
+          <p className="text-gray-300 mb-6">{configError}</p>
+          <p className="text-gray-400 text-sm">This application requires proper database configuration to function.</p>
+        </div>
+      </div>
+    )
   }
 
   // Show play button when:
