@@ -59,7 +59,8 @@ export default function RecordPage() {
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
     if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error("Supabase environment variables are not configured")
+      console.warn("⚠️ Supabase environment variables not configured - using demo mode")
+      return null
     }
 
     return createClient(supabaseUrl, supabaseAnonKey)

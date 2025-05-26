@@ -5,6 +5,19 @@ import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Play, Pause, AlertCircle, Check, X } from "lucide-react"
 import { QuoteService, type Quote } from "@/lib/quote-service"
 import AudioWaveform from "@/components/AudioWaveform"
+import { createClient } from "@supabase/supabase-js"
+
+const getSupabaseClient = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn("⚠️ Supabase environment variables not configured - using demo mode")
+    return null
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey)
+}
 
 // Extend window type for recording data
 declare global {

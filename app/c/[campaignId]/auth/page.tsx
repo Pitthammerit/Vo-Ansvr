@@ -7,6 +7,18 @@ import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Mail, Lock, User, ArrowRight } from "lucide-react"
 import { createClient } from "@supabase/supabase-js"
 
+const getSupabaseClient = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn("⚠️ Supabase environment variables not configured")
+    return null
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey)
+}
+
 export default function AuthPage() {
   const params = useParams()
   const router = useRouter()
@@ -21,7 +33,7 @@ export default function AuthPage() {
   const [error, setError] = useState("")
   const [showForgotPassword, setShowForgotPassword] = useState(false)
 
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+  const supabase = getSupabaseClient()
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,6 +41,13 @@ export default function AuthPage() {
     setError("")
 
     try {
+      if (!supabase) {
+        // Demo mode - skip auth and go directly to recording
+        console.log("🎭 Demo mode: Skipping authentication")
+        router.push(`/c/${params.campaignId}/record?type=${recordType}`)
+        return
+      }
+
       if (isLogin) {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
@@ -37,7 +56,6 @@ export default function AuthPage() {
 
         if (error) throw error
 
-        // Navigate to the requested recording mode
         router.push(`/c/${params.campaignId}/record?type=${recordType}`)
       } else {
         const { data, error } = await supabase.auth.signUp({
@@ -55,7 +73,6 @@ export default function AuthPage() {
         if (data.user && !data.session) {
           setError("Please check your email to confirm your account")
         } else {
-          // Navigate to the requested recording mode
           router.push(`/c/${params.campaignId}/record?type=${recordType}`)
         }
       }
@@ -69,6 +86,11 @@ export default function AuthPage() {
   const handleForgotPassword = async () => {
     if (!email.trim()) {
       setError("Please enter your email address first")
+      return
+    }
+
+    if (!supabase) {
+      setError("Password reset not available in demo mode")
       return
     }
 

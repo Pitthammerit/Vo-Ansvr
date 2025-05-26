@@ -112,7 +112,18 @@ export default function CampaignPage() {
   }
 
   const handleResponseType = (type: "video" | "audio" | "text") => {
-    router.push(`/c/${params.campaignId}/auth?type=${type}`)
+    // Check if we have Supabase configured
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      // Demo mode - skip auth and go directly to recording
+      console.log("🎭 Demo mode: Skipping authentication")
+      router.push(`/c/${params.campaignId}/record?type=${type}`)
+    } else {
+      // Production mode - go through auth
+      router.push(`/c/${params.campaignId}/auth?type=${type}`)
+    }
   }
 
   // Show play button when:
