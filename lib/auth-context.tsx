@@ -345,22 +345,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         logger.debug("👤 Updating profile for:", user.email)
-
-        const { error } = await supabase.auth.updateUser({
+        logger.debug("📤 Profile update data:", {
+          name: data.name,
           email: data.email,
-          data: {
-            name: data.name,
-            avatar_url: data.avatar_url,
-          },
+          avatar_url_length: data.avatar_url?.length || 0,
+          current_user_id: user.id,
         })
 
-        if (error) throw error
+        // Prepare the update data
+        const updateData: any = {}
+
+        // Handle email change
+        if (data.email && data.email !== user.email) {
+          updateData.email = data.email
+        }
+
+        // Handle user metadata (name and avatar)
+        const metadataUpdates: any = {}
+        if (data.name !== undefined) {
+          metadataUpdates.name = data.name
+        }
+        if (data.avatar_url !== undefined) {
+          metadataUpdates.avatar_url = data.avatar_url
+        }
+
+        // Only add data if there are metadata updates
+        if (Object.keys(metadataUpdates).length > 0) {
+          updateData.data = metadataUpdates
+        }
+
+        logger.debug("📤 Final update payload:", updateData)
+
+        // Perform the update
+        const { data: updatedUser, error } = await supabase.auth.updateUser(updateData)
+
+        if (error) {
+          logger.error("❌ Profile update error:", error)
+          throw error
+        }
 
         logger.info("✅ Profile updated successfully")
+        logger.debug("📥 Updated user data:", {
+          id: updatedUser.user?.id,
+          email: updatedUser.user?.email,
+          metadata: updatedUser.user?.user_metadata,
+        })
+
         return { error: null }
       } catch (error) {
         logger.error("Profile update error:", error)
-        return { error }
+        return {
+          error: {
+            message: error instanceof Error ? error.message : "Failed to update profile",
+            details: error,
+          },
+        }
       }
     },
     [supabase, user],
