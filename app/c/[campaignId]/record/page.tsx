@@ -431,39 +431,49 @@ export default function RecordPage() {
     }
   }
 
-  const handleBackNavigation = () => {
-    // Check if there's a referrer in the browser history
-    if (document.referrer && document.referrer !== window.location.href) {
-      // Check if the referrer is from the same domain
-      const referrerUrl = new URL(document.referrer)
-      const currentUrl = new URL(window.location.href)
-
-      if (referrerUrl.origin === currentUrl.origin) {
-        // If coming from same domain, go back in history
-        router.back()
-      } else {
-        // If external referrer, go to dashboard
-        router.push("/dashboard")
-      }
-    } else {
-      // No referrer or same page, check for campaign context
-      if (params.campaignId) {
-        // Go back to campaign welcome screen
-        router.push(`/c/${params.campaignId}`)
-      } else {
-        // Fallback to dashboard
-        router.push("/dashboard")
-      }
-    }
-  }
-
   const handleBackClick = () => {
     // For text type, check if there's content and show warning
     if (recordType === "text" && textResponse.trim()) {
       setShowDiscardWarning(true)
-    } else {
-      handleBackNavigation()
+      return
     }
+
+    // Enhanced back navigation logic
+    // Check if user came from a specific source
+    const referrer = document.referrer
+    const currentOrigin = window.location.origin
+
+    // If referrer is from the same origin, try to go back intelligently
+    if (referrer && referrer.startsWith(currentOrigin)) {
+      const referrerPath = new URL(referrer).pathname
+
+      // If came from dashboard, go back to dashboard
+      if (referrerPath === "/dashboard") {
+        router.push("/dashboard")
+        return
+      }
+
+      // If came from campaign welcome screen, go back there
+      if (referrerPath === `/c/${params.campaignId}`) {
+        router.push(`/c/${params.campaignId}`)
+        return
+      }
+
+      // For any other internal page, use browser back
+      router.back()
+    } else {
+      // If no referrer or external referrer, default to campaign welcome screen
+      router.push(`/c/${params.campaignId}`)
+    }
+  }
+
+  const handleDiscardConfirm = () => {
+    setShowDiscardWarning(false)
+    router.back()
+  }
+
+  const handleDiscardCancel = () => {
+    setShowDiscardWarning(false)
   }
 
   const handleAllowAgain = () => {
@@ -584,16 +594,6 @@ export default function RecordPage() {
     oscillator3.stop(stopTime)
   }
 
-  const handleDiscardCancel = () => {
-    setShowDiscardWarning(false)
-  }
-
-  const handleDiscardConfirm = () => {
-    setShowDiscardWarning(false)
-    setTextResponse("")
-    handleBackNavigation()
-  }
-
   if (recordType === "text") {
     return (
       <div className="flex flex-col h-screen bg-black text-white">
@@ -681,7 +681,7 @@ export default function RecordPage() {
       <div className="min-h-screen bg-black text-white relative overflow-hidden">
         {/* Header */}
         <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between">
-          <button onClick={handleBackNavigation} className="text-white">
+          <button onClick={handleBackClick} className="text-white">
             <ArrowLeft className="w-6 h-6" />
           </button>
           <div className="text-white font-bold text-lg">
