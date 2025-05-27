@@ -894,7 +894,7 @@ export default function RecordPage() {
                 ) : readyToRecord ? (
                   <div className="flex flex-col items-center">
                     {/* Start recording text */}
-                    <p className="text-white text-sm mb-4 font-light">Start recording...</p>
+                    <p className="text-white text-base mb-4 font-light">Start recording...</p>
 
                     <div className="relative w-20 h-20 flex items-center justify-center">
                       {/* Ready to record button */}
