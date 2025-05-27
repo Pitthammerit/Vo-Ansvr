@@ -189,6 +189,16 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {/* Debug Link - Remove in production */}
+        <div className="max-w-4xl mx-auto px-4 py-2">
+          <button
+            onClick={() => router.push("/debug/user-state")}
+            className="text-xs text-gray-500 hover:text-gray-400 underline"
+          >
+            🔍 Debug User State
+          </button>
+        </div>
+
         {/* Main Content */}
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="mb-8">
