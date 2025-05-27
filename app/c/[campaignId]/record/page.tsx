@@ -930,7 +930,11 @@ export default function RecordPage() {
                         onClick={stopRecording}
                         className="glass-button-circular glass-button-red mx-2 my-2"
                         style={{
-                          animation: "recording-pulse 1.5s ease-in-out infinite",
+                          animationName: "recording-pulse",
+                          animationDuration: "1.5s",
+                          animationTimingFunction: "ease-in-out",
+                          animationIterationCount: "infinite",
+                          animationFillMode: "both",
                         }}
                       >
                         <Square className="w-6 h-6 text-white" fill="white" />
@@ -951,8 +955,11 @@ export default function RecordPage() {
                         onClick={startCountdown}
                         className={`glass-button-circular glass-button-red ${countdown > 0 ? "" : "hover:scale-105"}`}
                         style={{
-                          animation: countdown > 0 ? `countdown-pulse-trigger 0.6s ease-in-out` : "none",
-                          animationIterationCount: 1,
+                          animationName: countdown > 0 ? "countdown-pulse-trigger" : "none",
+                          animationDuration: countdown > 0 ? "0.6s" : "none",
+                          animationTimingFunction: countdown > 0 ? "ease-in-out" : "none",
+                          animationIterationCount: countdown > 0 ? "1" : "none",
+                          animationFillMode: countdown > 0 ? "forwards" : "none",
                         }}
                         key={buttonPulseKey}
                       >
