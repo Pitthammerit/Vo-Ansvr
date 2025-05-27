@@ -726,7 +726,7 @@ export default function ReviewPage() {
         </div> */}
 
         {/* Ready to Send Message - Using master design system */}
-        <div className="master-text-container">
+        <div className="absolute bottom-[154px] inset-x-4 z-20 text-center">
           <h2 className="master-text-above-buttons">Ready to send?</h2>
         </div>
 
