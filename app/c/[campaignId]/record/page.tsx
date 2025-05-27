@@ -641,7 +641,7 @@ export default function RecordPage() {
               if (showError) setShowError(false)
             }}
             placeholder="What's on your mind? No need to be formal, just tell me straight up..."
-            className="w-full h-48 bg-transparent text-white placeholder-gray-400 resize-none focus:outline-none font-light text-lg leading-relaxed"
+            className="w-full h-96 bg-transparent text-white placeholder-gray-400 resize-none focus:outline-none font-light text-lg leading-relaxed"
             style={{ borderRadius: "6px" }}
           />
 
