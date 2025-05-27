@@ -1,93 +1,54 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
-import { createLogger } from "./debug"
 
-// Component-specific logger
-const logger = createLogger("Supabase")
+let supabaseClient: SupabaseClient | null = null
+let initializationPromise: Promise<SupabaseClient> | null = null
 
-// Simple singleton
-let supabaseInstance: SupabaseClient | null = null
-
-export function getSupabaseClient(): SupabaseClient {
-  // Return existing instance if available
-  if (supabaseInstance) {
-    logger.debug("Returning existing Supabase instance")
-    return supabaseInstance
+export async function getSupabaseClient(): Promise<SupabaseClient> {
+  // If we already have a client, return it
+  if (supabaseClient) {
+    return supabaseClient
   }
 
-  // Get environment variables
+  // If initialization is in progress, wait for it
+  if (initializationPromise) {
+    return initializationPromise
+  }
+
+  // Start initialization
+  initializationPromise = initializeClient()
+
+  try {
+    supabaseClient = await initializationPromise
+    return supabaseClient
+  } finally {
+    initializationPromise = null
+  }
+}
+
+async function initializeClient(): Promise<SupabaseClient> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  if (!supabaseUrl) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_URL is not set")
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Missing Supabase environment variables")
   }
 
-  if (!supabaseAnonKey) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY is not set")
-  }
-
-  logger.info("Creating new Supabase client instance...")
-
-  // Create instance with proper session persistence
-  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
+  const client = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
-      storage: typeof window !== "undefined" ? window.localStorage : undefined,
-      storageKey: "ansvr.auth.token",
       flowType: "pkce",
-    },
-    global: {
-      headers: {
-        "X-Client-Info": "ansvr-web-app",
-      },
     },
   })
 
-  logger.info("✅ Supabase client created successfully")
-  return supabaseInstance
-}
-
-// Synchronous version for immediate access
-export function getSupabaseClientSync(): SupabaseClient | null {
-  return supabaseInstance
-}
-
-// Reset function for testing/debugging
-export function resetSupabaseClient(): void {
-  logger.debug("Resetting Supabase client")
-  supabaseInstance = null
-}
-
-// Health check function
-export async function checkSupabaseHealth(): Promise<{
-  status: "healthy" | "unhealthy"
-  message: string
-  details?: any
-}> {
+  // Test the client connection
   try {
-    const client = getSupabaseClient()
-    const { data, error } = await client.auth.getSession()
-
-    if (error && !error.message.includes("session_not_found")) {
-      return {
-        status: "unhealthy",
-        message: `Supabase health check failed: ${error.message}`,
-        details: error,
-      }
-    }
-
-    return {
-      status: "healthy",
-      message: "Supabase is healthy and responding",
-      details: { hasSession: !!data.session },
-    }
+    await client.auth.getSession()
+    console.log("✅ Supabase client initialized successfully")
   } catch (error) {
-    return {
-      status: "unhealthy",
-      message: `Supabase health check failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-      details: error,
-    }
+    console.warn("⚠️ Initial session check failed, but client created:", error)
   }
+
+  return client
 }

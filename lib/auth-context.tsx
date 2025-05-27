@@ -50,38 +50,80 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const supabase = getSupabaseClient()
         console.log("✅ Got Supabase client")
 
-        // Get initial session
-        const { data, error } = await supabase.auth.getSession()
+        // Add retry logic for initial session check
+        let sessionData = null
+        let sessionError = null
+        let retryCount = 0
+        const maxRetries = 3
+
+        while (retryCount < maxRetries && !sessionData) {
+          const { data, error } = await supabase.auth.getSession()
+
+          if (error && !error.message.includes("session_not_found")) {
+            sessionError = error
+            console.warn(`Session check attempt ${retryCount + 1} failed:`, error.message)
+
+            // Wait a bit before retrying
+            if (retryCount < maxRetries - 1) {
+              await new Promise((resolve) => setTimeout(resolve, 500))
+            }
+          } else {
+            sessionData = data
+            sessionError = error
+            break
+          }
+
+          retryCount++
+        }
 
         console.log("📋 Initial session check:", {
-          hasSession: !!data.session,
-          error: error?.message,
-          user: data.session?.user?.email,
+          hasSession: !!sessionData?.session,
+          error: sessionError?.message,
+          user: sessionData?.session?.user?.email,
+          retryCount,
         })
 
         if (mounted) {
-          if (error) {
-            console.error("❌ Session error:", error)
-            setError(`Session error: ${error.message}`)
+          if (sessionError && !sessionError.message.includes("session_not_found")) {
+            console.error("❌ Session error after retries:", sessionError)
+            setError(`Session error: ${sessionError.message}`)
           } else {
-            setSession(data.session)
-            setUser(data.session?.user ?? null)
+            setSession(sessionData?.session || null)
+            setUser(sessionData?.session?.user ?? null)
             setError(null)
           }
           setLoading(false)
         }
 
-        // Set up auth state listener
+        // Set up auth state listener with better error handling
         const {
           data: { subscription },
-        } = supabase.auth.onAuthStateChange((event, session) => {
+        } = supabase.auth.onAuthStateChange(async (event, session) => {
           console.log("🔄 Auth state changed:", event, session?.user?.email || "No user")
 
           if (mounted) {
-            setSession(session)
-            setUser(session?.user ?? null)
-            if (session) {
+            // Handle specific auth events
+            if (event === "SIGNED_IN" && session) {
+              console.log("✅ User signed in successfully")
+              setSession(session)
+              setUser(session.user)
               setError(null)
+            } else if (event === "SIGNED_OUT") {
+              console.log("👋 User signed out")
+              setSession(null)
+              setUser(null)
+              setError(null)
+            } else if (event === "TOKEN_REFRESHED" && session) {
+              console.log("🔄 Token refreshed")
+              setSession(session)
+              setUser(session.user)
+              setError(null)
+            } else {
+              setSession(session)
+              setUser(session?.user ?? null)
+              if (session) {
+                setError(null)
+              }
             }
           }
         })
