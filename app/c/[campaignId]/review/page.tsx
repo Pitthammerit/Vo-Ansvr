@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Play, Pause, AlertCircle } from "lucide-react"
+import { ArrowLeft, Play, Pause, AlertCircle, Check, X } from "lucide-react"
 import { QuoteService, type Quote } from "@/lib/quote-service"
 import AudioWaveform from "@/components/AudioWaveform"
 import { createClient } from "@supabase/supabase-js"
@@ -721,33 +721,33 @@ export default function ReviewPage() {
         </div>
 
         {/* Ready to Send Message - Fixed positioning with better spacing */}
-        <div className="absolute bottom-40 inset-x-4 z-20 text-center">
-          <h2 className="text-2xl font-bold text-white mb-8">Ready to send?</h2>
+        <div className="absolute bottom-36 inset-x-4 z-20 text-center">
+          <h2 className="text-xl font-bold text-white mb-2 py-2 px-4 inline-block">Ready to send?</h2>
         </div>
 
         {/* Smaller Circular Action Buttons */}
         <div className="absolute bottom-16 inset-x-4 z-20">
-          <div className="flex gap-8 justify-center max-w-sm mx-auto">
-            {/* Yes Button - Larger Circle */}
+          <div className="flex gap-6 justify-center max-w-sm mx-auto">
+            {/* Yes Button - Smaller Circle */}
             <button
               onClick={handleSend}
               disabled={uploading}
-              className="w-20 h-20 bg-[#2DAD71] hover:bg-[#2DAD71]/90 disabled:bg-gray-600 rounded-full flex items-center justify-center transition-all shadow-lg"
+              className="w-16 h-16 bg-[#2DAD71]/50 backdrop-blur-md hover:bg-[#2DAD71]/60 disabled:bg-gray-600/50 rounded-full flex items-center justify-center transition-all shadow-lg"
             >
               {uploading ? (
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
               ) : (
-                <span className="text-white font-bold text-lg">Yes</span>
+                <Check className="w-6 h-6 text-white" strokeWidth={3} />
               )}
             </button>
 
-            {/* No Button - Larger Circle */}
+            {/* No Button - Smaller Circle */}
             <button
               onClick={handleRetake}
               disabled={uploading}
-              className="w-20 h-20 bg-white hover:bg-gray-200 disabled:bg-gray-400 rounded-full flex items-center justify-center transition-all shadow-lg"
+              className="w-16 h-16 bg-white/50 backdrop-blur-md hover:bg-white/60 disabled:bg-gray-600/50 rounded-full flex items-center justify-center transition-all shadow-lg"
             >
-              <span className="text-black font-bold text-lg">No</span>
+              <X className="w-6 h-6 text-black" strokeWidth={3} />
             </button>
           </div>
         </div>

@@ -78,13 +78,13 @@ export default function ThanksPage() {
           <div className="flex justify-center gap-6 max-w-sm mx-auto">
             <button
               onClick={handleSendAnother}
-              className="w-16 h-16 bg-[#2DAD71] hover:bg-[#2DAD71]/90 rounded-full flex items-center justify-center transition-all"
+              className="w-16 h-16 bg-[#2DAD71]/50 backdrop-blur-md hover:bg-[#2DAD71]/60 rounded-full flex items-center justify-center transition-all shadow-lg"
             >
               <span className="text-white font-bold text-lg">Yes</span>
             </button>
             <button
               onClick={handleDone}
-              className="w-16 h-16 bg-white hover:bg-gray-200 rounded-full flex items-center justify-center transition-all"
+              className="w-16 h-16 bg-white/50 backdrop-blur-md hover:bg-white/60 rounded-full flex items-center justify-center transition-all shadow-lg"
             >
               <span className="text-black font-bold text-lg">No</span>
             </button>
