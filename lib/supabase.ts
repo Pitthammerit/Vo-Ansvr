@@ -4,171 +4,144 @@ import { createLogger } from "./debug"
 // Component-specific logger
 const logger = createLogger("Supabase")
 
-// Global singleton with stronger protection
+// Simple singleton
 let supabaseInstance: SupabaseClient | null = null
-let isInitializing = false
-
-// Unique identifier for this app session
-const APP_SESSION_ID = `ansvr_${Date.now()}_${Math.random().toString(36).substring(7)}`
-
-// Storage key for tracking the active instance
-const INSTANCE_TRACKER_KEY = "ansvr_supabase_active_instance"
-
-// Check if we're in a browser environment
-const isBrowser = typeof window !== "undefined"
-
-// Enhanced singleton protection
-function getGlobalInstance(): SupabaseClient | null {
-  if (!isBrowser) return null
-
-  // Check if there's already a global instance
-  const globalInstance = (window as any).__ansvr_supabase_singleton
-  if (globalInstance && globalInstance.supabaseUrl) {
-    logger.debug("Found existing global Supabase instance")
-    return globalInstance
-  }
-
-  return null
-}
-
-// Set global instance with protection
-function setGlobalInstance(instance: SupabaseClient): void {
-  if (!isBrowser) return
-
-  // Only set if not already set by another instance
-  if (!(window as any).__ansvr_supabase_singleton) {
-    ;(window as any).__ansvr_supabase_singleton = instance
-
-    // Track this session as the owner
-    sessionStorage.setItem(INSTANCE_TRACKER_KEY, APP_SESSION_ID)
-
-    logger.debug("Set global Supabase instance", APP_SESSION_ID)
-
-    // Cleanup on page unload
-    const cleanup = () => {
-      const currentOwner = sessionStorage.getItem(INSTANCE_TRACKER_KEY)
-      if (currentOwner === APP_SESSION_ID) {
-        delete (window as any).__ansvr_supabase_singleton
-        sessionStorage.removeItem(INSTANCE_TRACKER_KEY)
-        logger.debug("Cleaned up global instance on unload")
-      }
-    }
-
-    window.addEventListener("beforeunload", cleanup, { once: true })
-    window.addEventListener("pagehide", cleanup, { once: true })
-  }
-}
+let initializationError: Error | null = null
 
 export async function getSupabaseClient(): Promise<SupabaseClient> {
+  // Return existing instance if available
+  if (supabaseInstance) {
+    logger.debug("Returning existing Supabase instance")
+    return supabaseInstance
+  }
+
+  // If we had a previous initialization error, throw it again
+  if (initializationError) {
+    logger.error("Previous initialization error:", initializationError.message)
+    throw initializationError
+  }
+
   // Get environment variables
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      "Missing Supabase credentials. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY",
-    )
+  // Detailed environment variable validation
+  if (!supabaseUrl) {
+    const error = new Error("NEXT_PUBLIC_SUPABASE_URL is not set. Please add it to your .env.local file.")
+    initializationError = error
+    logger.error("Missing Supabase URL")
+    throw error
   }
 
-  // Return existing instance if available
-  if (supabaseInstance) {
-    logger.debug("Returning existing singleton instance")
-    return supabaseInstance
+  if (!supabaseAnonKey) {
+    const error = new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY is not set. Please add it to your .env.local file.")
+    initializationError = error
+    logger.error("Missing Supabase anon key")
+    throw error
   }
 
-  // Check for existing global instance
-  const existingInstance = getGlobalInstance()
-  if (existingInstance) {
-    supabaseInstance = existingInstance
-    logger.debug("Using existing global instance")
-    return supabaseInstance
+  // Validate URL format
+  try {
+    new URL(supabaseUrl)
+  } catch {
+    const error = new Error(`Invalid Supabase URL format: ${supabaseUrl}`)
+    initializationError = error
+    logger.error("Invalid Supabase URL format")
+    throw error
   }
 
-  // Prevent multiple concurrent initializations
-  if (isInitializing) {
-    logger.debug("Already initializing, waiting...")
-    // Wait for initialization to complete
-    while (isInitializing && !supabaseInstance) {
-      await new Promise((resolve) => setTimeout(resolve, 50))
-    }
-    return supabaseInstance!
+  // Validate anon key format (basic check)
+  if (supabaseAnonKey.length < 100) {
+    const error = new Error("Supabase anon key appears to be invalid (too short)")
+    initializationError = error
+    logger.error("Invalid Supabase anon key format")
+    throw error
   }
-
-  // Initialize new instance
-  return await initializeNewInstance(supabaseUrl, supabaseAnonKey)
-}
-
-async function initializeNewInstance(supabaseUrl: string, supabaseAnonKey: string): Promise<SupabaseClient> {
-  isInitializing = true
 
   try {
-    logger.info("Creating new Supabase client instance")
+    logger.info("Creating Supabase client instance...")
+    logger.debug("Supabase URL:", supabaseUrl)
+    logger.debug("Supabase Key (first 20 chars):", supabaseAnonKey.substring(0, 20) + "...")
 
-    // Create instance with optimized configuration
-    const newInstance = createClient(supabaseUrl, supabaseAnonKey, {
+    // Create instance with comprehensive configuration
+    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        storage: isBrowser ? window.localStorage : undefined,
-        storageKey: "ansvr.auth.token", // Unique storage key for our app
+        storage: typeof window !== "undefined" ? window.localStorage : undefined,
+        storageKey: "ansvr.auth.token",
         flowType: "pkce",
       },
       global: {
         headers: {
-          "X-Client-Info": `ansvr-${APP_SESSION_ID}`,
+          "X-Client-Info": "ansvr-web-app",
         },
       },
       db: {
         schema: "public",
       },
-      realtime: {
-        params: {
-          eventsPerSecond: 10,
-        },
-      },
     })
 
-    // Set as singleton
-    supabaseInstance = newInstance
-    setGlobalInstance(newInstance)
+    // Test the connection immediately
+    logger.debug("Testing Supabase connection...")
+    const { error: testError } = await supabaseInstance.auth.getSession()
 
-    logger.info("✅ Supabase client initialized successfully")
+    if (testError && !testError.message.includes("session_not_found")) {
+      throw new Error(`Supabase connection test failed: ${testError.message}`)
+    }
+
+    logger.info("✅ Supabase client initialized and tested successfully")
     return supabaseInstance
   } catch (error) {
-    logger.error("❌ Failed to initialize Supabase client:", error)
-    throw error
-  } finally {
-    isInitializing = false
+    const enhancedError = new Error(
+      `Failed to initialize Supabase client: ${error instanceof Error ? error.message : "Unknown error"}`,
+    )
+    initializationError = enhancedError
+    logger.error("❌ Supabase initialization failed:", enhancedError.message)
+    throw enhancedError
   }
 }
 
 // Synchronous version for immediate access
 export function getSupabaseClientSync(): SupabaseClient | null {
-  return supabaseInstance || getGlobalInstance()
+  return supabaseInstance
 }
 
-// Enhanced cleanup function
-export function cleanupSupabaseInstance(): void {
-  logger.debug("🧹 Cleaning up Supabase instance")
+// Reset function for testing/debugging
+export function resetSupabaseClient(): void {
+  logger.debug("Resetting Supabase client")
+  supabaseInstance = null
+  initializationError = null
+}
 
-  if (isBrowser) {
-    const currentOwner = sessionStorage.getItem(INSTANCE_TRACKER_KEY)
+// Health check function
+export async function checkSupabaseHealth(): Promise<{
+  status: "healthy" | "unhealthy"
+  message: string
+  details?: any
+}> {
+  try {
+    const client = await getSupabaseClient()
+    const { data, error } = await client.auth.getSession()
 
-    // Only cleanup if we own the instance
-    if (currentOwner === APP_SESSION_ID) {
-      if (supabaseInstance) {
-        // Don't destroy the client, just clear references
-        supabaseInstance = null
+    if (error && !error.message.includes("session_not_found")) {
+      return {
+        status: "unhealthy",
+        message: `Supabase health check failed: ${error.message}`,
+        details: error,
       }
+    }
 
-      delete (window as any).__ansvr_supabase_singleton
-      sessionStorage.removeItem(INSTANCE_TRACKER_KEY)
-      logger.debug("Cleaned up owned instance")
-    } else {
-      logger.debug("Not cleaning up - not the owner")
+    return {
+      status: "healthy",
+      message: "Supabase is healthy and responding",
+    }
+  } catch (error) {
+    return {
+      status: "unhealthy",
+      message: `Supabase health check failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      details: error,
     }
   }
-
-  isInitializing = false
 }

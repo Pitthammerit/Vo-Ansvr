@@ -22,9 +22,22 @@ export function AuthGuard({
   const { user, loading, isAdmin } = useAuth()
   const router = useRouter()
   const [hasRedirected, setHasRedirected] = useState(false)
+  const [loadingTimeout, setLoadingTimeout] = useState(false)
+
+  // Add a timeout for loading state
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (loading) {
+        console.warn("Auth loading timeout - forcing completion")
+        setLoadingTimeout(true)
+      }
+    }, 5000) // 5 second timeout
+
+    return () => clearTimeout(timer)
+  }, [loading])
 
   useEffect(() => {
-    if (loading || hasRedirected) return
+    if ((loading && !loadingTimeout) || hasRedirected) return
 
     const isAuthenticated = !!user
 
@@ -43,9 +56,9 @@ export function AuthGuard({
       setHasRedirected(true)
       router.push("/dashboard")
     }
-  }, [user, loading, isAdmin, requireAuth, requireAdmin, redirectTo, router, hasRedirected])
+  }, [user, loading, loadingTimeout, isAdmin, requireAuth, requireAdmin, redirectTo, router, hasRedirected])
 
-  if (loading) {
+  if (loading && !loadingTimeout) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center">

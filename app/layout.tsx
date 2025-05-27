@@ -3,24 +3,16 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
-import { DevAuthPanel } from "@/components/DevAuthPanel"
+import { AuthErrorBoundary } from "@/components/auth-error-boundary"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "ANSVR",
-  description: "Async Video Conversation Platform",
+  title: "ANS/R - Response Platform",
+  description: "Collect and manage responses from your audience",
   manifest: "/manifest.json",
   themeColor: "#000000",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "ANSVR",
-  },
-  icons: {
-    icon: "/icon-192x192.png",
-    apple: "/icon-192x192.png",
-  },
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
     generator: 'v0.dev'
 }
 
@@ -31,26 +23,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <link rel="icon" href="/icon-192x192.png" />
-      </head>
-      <body className={`${inter.className} bg-black text-white`}>
+      <body className={inter.className}>
         <AuthProvider>
-          {children}
-          <DevAuthPanel />
+          <AuthErrorBoundary>{children}</AuthErrorBoundary>
         </AuthProvider>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js');
-                });
-              }
-            `,
-          }}
-        />
       </body>
     </html>
   )
