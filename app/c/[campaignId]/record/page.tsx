@@ -431,22 +431,39 @@ export default function RecordPage() {
     }
   }
 
+  const handleBackNavigation = () => {
+    // Check if there's a referrer in the browser history
+    if (document.referrer && document.referrer !== window.location.href) {
+      // Check if the referrer is from the same domain
+      const referrerUrl = new URL(document.referrer)
+      const currentUrl = new URL(window.location.href)
+
+      if (referrerUrl.origin === currentUrl.origin) {
+        // If coming from same domain, go back in history
+        router.back()
+      } else {
+        // If external referrer, go to dashboard
+        router.push("/dashboard")
+      }
+    } else {
+      // No referrer or same page, check for campaign context
+      if (params.campaignId) {
+        // Go back to campaign welcome screen
+        router.push(`/c/${params.campaignId}`)
+      } else {
+        // Fallback to dashboard
+        router.push("/dashboard")
+      }
+    }
+  }
+
   const handleBackClick = () => {
     // For text type, check if there's content and show warning
     if (recordType === "text" && textResponse.trim()) {
       setShowDiscardWarning(true)
     } else {
-      router.back()
+      handleBackNavigation()
     }
-  }
-
-  const handleDiscardConfirm = () => {
-    setShowDiscardWarning(false)
-    router.back()
-  }
-
-  const handleDiscardCancel = () => {
-    setShowDiscardWarning(false)
   }
 
   const handleAllowAgain = () => {
@@ -567,6 +584,16 @@ export default function RecordPage() {
     oscillator3.stop(stopTime)
   }
 
+  const handleDiscardCancel = () => {
+    setShowDiscardWarning(false)
+  }
+
+  const handleDiscardConfirm = () => {
+    setShowDiscardWarning(false)
+    setTextResponse("")
+    handleBackNavigation()
+  }
+
   if (recordType === "text") {
     return (
       <div className="flex flex-col h-screen bg-black text-white">
@@ -654,7 +681,7 @@ export default function RecordPage() {
       <div className="min-h-screen bg-black text-white relative overflow-hidden">
         {/* Header */}
         <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between">
-          <button onClick={() => router.back()} className="text-white">
+          <button onClick={handleBackNavigation} className="text-white">
             <ArrowLeft className="w-6 h-6" />
           </button>
           <div className="text-white font-bold text-lg">
