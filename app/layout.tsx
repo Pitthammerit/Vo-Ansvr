@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
+import { DevAuthPanel } from "@/components/DevAuthPanel"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -35,7 +36,10 @@ export default function RootLayout({
         <link rel="icon" href="/icon-192x192.png" />
       </head>
       <body className={`${inter.className} bg-black text-white`}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          <DevAuthPanel />
+        </AuthProvider>
         <script
           dangerouslySetInnerHTML={{
             __html: `

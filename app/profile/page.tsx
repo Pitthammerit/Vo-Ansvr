@@ -2,17 +2,17 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { AuthGuard } from "@/components/auth-guard"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, User, Mail, Save, Eye, EyeOff } from "lucide-react"
+import { ArrowLeft, User, Mail, Save, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react"
+import { ProfilePictureEditor } from "@/components/ProfilePictureEditor"
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { user, updateProfile, isDemo } = useAuth()
+  const { user, updateProfile, updatePassword, loading: authLoading } = useAuth()
 
   const [name, setName] = useState(user?.user_metadata?.name || "")
   const [email, setEmail] = useState(user?.email || "")
@@ -20,11 +20,35 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const [passwordLoading, setPasswordLoading] = useState(false)
   const [error, setError] = useState("")
+  const [passwordError, setPasswordError] = useState("")
   const [success, setSuccess] = useState("")
+  const [passwordSuccess, setPasswordSuccess] = useState("")
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(user?.user_metadata?.avatar_url || null)
+  const [showProfileEditor, setShowProfileEditor] = useState(false)
+
+  // Update form when user data changes
+  useEffect(() => {
+    if (user) {
+      setName(user.user_metadata?.name || "")
+      setEmail(user.email || "")
+      setAvatarPreview(user.user_metadata?.avatar_url || null)
+    }
+  }, [user])
+
+  // Clear errors when inputs change
+  useEffect(() => {
+    if (error) setError("")
+  }, [name, email])
+
+  useEffect(() => {
+    if (passwordError) setPasswordError("")
+  }, [currentPassword, newPassword, confirmPassword])
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,15 +57,21 @@ export default function ProfilePage() {
     setSuccess("")
 
     try {
-      const { error } = await updateProfile({ name, email })
+      const { error } = await updateProfile({
+        name,
+        email,
+        avatar_url: avatarPreview,
+      })
 
       if (error) {
         setError(error.message)
       } else {
         setSuccess("Profile updated successfully!")
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(""), 3000)
       }
     } catch (err) {
-      setError("An unexpected error occurred")
+      setError("An unexpected error occurred. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -49,29 +79,63 @@ export default function ProfilePage() {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
-    setSuccess("")
+    setPasswordError("")
+    setPasswordSuccess("")
 
     if (newPassword !== confirmPassword) {
-      setError("New passwords do not match")
+      setPasswordError("New passwords do not match")
       return
     }
 
     if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters long")
+      setPasswordError("Password must be at least 6 characters long")
       return
     }
 
-    if (isDemo) {
-      setSuccess("Password updated successfully! (Demo mode)")
-      setCurrentPassword("")
-      setNewPassword("")
-      setConfirmPassword("")
-      return
-    }
+    setPasswordLoading(true)
 
-    // In a real app, you'd implement password change logic here
-    setSuccess("Password change functionality would be implemented here")
+    try {
+      const { error } = await updatePassword(newPassword)
+
+      if (error) {
+        setPasswordError(error.message)
+      } else {
+        setPasswordSuccess("Password updated successfully!")
+        setCurrentPassword("")
+        setNewPassword("")
+        setConfirmPassword("")
+
+        // Clear success message after 3 seconds
+        setTimeout(() => setPasswordSuccess(""), 3000)
+      }
+    } catch (err) {
+      setPasswordError("Failed to change password. Please try again.")
+    } finally {
+      setPasswordLoading(false)
+    }
+  }
+
+  const handleAvatarSave = async (imageData: string) => {
+    setAvatarPreview(imageData)
+    setShowProfileEditor(false)
+
+    // Auto-save the avatar
+    try {
+      const { error } = await updateProfile({
+        name,
+        email,
+        avatar_url: imageData,
+      })
+
+      if (error) {
+        setError("Failed to save profile picture")
+      } else {
+        setSuccess("Profile picture updated!")
+        setTimeout(() => setSuccess(""), 3000)
+      }
+    } catch (err) {
+      setError("Failed to save profile picture")
+    }
   }
 
   return (
@@ -96,21 +160,56 @@ export default function ProfilePage() {
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">Profile Settings</h1>
             <p className="text-gray-400">Manage your account information and preferences</p>
-            {isDemo && (
-              <div className="mt-4 p-3 bg-blue-900/20 border border-blue-700 rounded-lg">
-                <p className="text-blue-300 text-sm">🎭 Demo Mode - Changes are simulated</p>
-              </div>
-            )}
           </div>
+
+          {/* Global Success/Error Messages */}
+          {error && (
+            <div className="mb-6 p-3 bg-red-900/20 border border-red-700 rounded-lg flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-400" />
+              <p className="text-red-400 text-sm">{error}</p>
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-6 p-3 bg-green-900/20 border border-green-700 rounded-lg flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-green-400" />
+              <p className="text-green-400 text-sm">{success}</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Profile Information */}
             <Card className="bg-gray-900 border-gray-700">
               <CardHeader>
-                <CardTitle className="text-white">Profile Information</CardTitle>
+                <CardTitle className="text-white">My Profile</CardTitle>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleUpdateProfile} className="space-y-4">
+                  <div className="flex flex-col items-center mb-6">
+                    <button
+                      type="button"
+                      onClick={() => setShowProfileEditor(true)}
+                      className="w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden mb-4 hover:opacity-80 transition-opacity"
+                    >
+                      {avatarPreview ? (
+                        <img
+                          src={avatarPreview || "/placeholder.svg"}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-8 h-8 text-gray-400" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowProfileEditor(true)}
+                      className="text-sm text-[#2DAD71] hover:text-[#2DAD71]/80 transition-colors"
+                    >
+                      Change Profile
+                    </button>
+                  </div>
+
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
@@ -137,36 +236,24 @@ export default function ProfilePage() {
                     />
                   </div>
 
-                  {error && (
-                    <div className="bg-red-900/20 border border-red-700 p-3" style={{ borderRadius: "12px" }}>
-                      <p className="text-red-400 text-sm">{error}</p>
-                    </div>
-                  )}
-
-                  {success && (
-                    <div className="bg-green-900/20 border border-green-700 p-3" style={{ borderRadius: "12px" }}>
-                      <p className="text-green-400 text-sm">{success}</p>
-                    </div>
-                  )}
-
-                  <Button
+                  <button
                     type="submit"
-                    disabled={loading}
-                    className="w-full bg-[#2DAD71] hover:bg-[#2DAD71]/90"
+                    disabled={loading || authLoading}
+                    className="w-full bg-[#2DAD71] hover:bg-[#2DAD71]/90 disabled:bg-gray-600 text-white font-semibold py-3 px-6 transition-all flex items-center justify-center gap-2"
                     style={{ borderRadius: "6px" }}
                   >
                     {loading ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                         Updating...
                       </>
                     ) : (
                       <>
-                        <Save className="w-4 h-4 mr-2" />
+                        <Save className="w-4 h-4" />
                         Update Profile
                       </>
                     )}
-                  </Button>
+                  </button>
                 </form>
               </CardContent>
             </Card>
@@ -237,19 +324,50 @@ export default function ProfilePage() {
                     </button>
                   </div>
 
-                  <Button
+                  {passwordError && (
+                    <div className="bg-red-900/20 border border-red-700 p-3 rounded-lg flex items-start gap-2">
+                      <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                      <p className="text-red-400 text-sm">{passwordError}</p>
+                    </div>
+                  )}
+
+                  {passwordSuccess && (
+                    <div className="bg-green-900/20 border border-green-700 p-3 rounded-lg flex items-start gap-2">
+                      <CheckCircle className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
+                      <p className="text-green-400 text-sm">{passwordSuccess}</p>
+                    </div>
+                  )}
+
+                  <button
                     type="submit"
-                    className="w-full bg-[#2DAD71] hover:bg-[#2DAD71]/90"
+                    disabled={passwordLoading || authLoading}
+                    className="w-full bg-[#2DAD71] hover:bg-[#2DAD71]/90 disabled:bg-gray-600 text-white font-semibold py-3 px-6 transition-all flex items-center justify-center gap-2"
                     style={{ borderRadius: "6px" }}
                   >
-                    <Save className="w-4 h-4 mr-2" />
-                    Change Password
-                  </Button>
+                    {passwordLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Changing...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Change Password
+                      </>
+                    )}
+                  </button>
                 </form>
               </CardContent>
             </Card>
           </div>
         </div>
+
+        <ProfilePictureEditor
+          isOpen={showProfileEditor}
+          onClose={() => setShowProfileEditor(false)}
+          onSave={handleAvatarSave}
+          initialImage={avatarPreview}
+        />
       </div>
     </AuthGuard>
   )

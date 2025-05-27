@@ -2,40 +2,49 @@
 
 import type React from "react"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 
 interface AuthGuardProps {
   children: React.ReactNode
   requireAuth?: boolean
   redirectTo?: string
+  requireAdmin?: boolean
 }
 
-export function AuthGuard({ children, requireAuth = true, redirectTo = "/auth/login" }: AuthGuardProps) {
-  const { user, loading, isDemo } = useAuth()
+export function AuthGuard({
+  children,
+  requireAuth = true,
+  redirectTo = "/auth/login",
+  requireAdmin = false,
+}: AuthGuardProps) {
+  const { user, loading, isAdmin } = useAuth()
   const router = useRouter()
+  const [hasRedirected, setHasRedirected] = useState(false)
 
   useEffect(() => {
-    if (loading) return
+    if (loading || hasRedirected) return
 
-    // In demo mode, always allow access
-    if (isDemo) return
+    const isAuthenticated = !!user
 
-    // If auth is required but user is not authenticated
-    if (requireAuth && !user) {
+    // Check if admin access is required
+    if (requireAdmin && (!isAuthenticated || !isAdmin)) {
+      setHasRedirected(true)
+      router.push("/dashboard") // Redirect non-admins to dashboard
+      return
+    }
+
+    if (requireAuth && !isAuthenticated) {
+      setHasRedirected(true)
       router.push(redirectTo)
-      return
-    }
-
-    // If auth is not required but user is authenticated (e.g., login page)
-    if (!requireAuth && user) {
+    } else if (!requireAuth && isAuthenticated) {
+      // User is already logged in and trying to access auth pages
+      setHasRedirected(true)
       router.push("/dashboard")
-      return
     }
-  }, [user, loading, requireAuth, redirectTo, router, isDemo])
+  }, [user, loading, isAdmin, requireAuth, requireAdmin, redirectTo, router, hasRedirected])
 
-  // Show loading spinner while checking auth
   if (loading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -50,11 +59,28 @@ export function AuthGuard({ children, requireAuth = true, redirectTo = "/auth/lo
     )
   }
 
-  // In demo mode or if auth check passes, render children
-  if (isDemo || (requireAuth && user) || (!requireAuth && !user)) {
+  const isAuthenticated = !!user
+
+  // Check admin requirement
+  if (requireAdmin && (!isAuthenticated || !isAdmin)) {
+    return null // Will redirect in the useEffect
+  }
+
+  // Show content if auth requirements are met
+  if ((requireAuth && isAuthenticated) || (!requireAuth && !isAuthenticated)) {
     return <>{children}</>
   }
 
-  // Don't render anything while redirecting
-  return null
+  // Show loading while redirecting
+  return (
+    <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="text-center">
+        <div className="text-white font-bold text-2xl mb-4">
+          ANS/R<span className="text-red-500">.</span>
+        </div>
+        <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-gray-400">Redirecting...</p>
+      </div>
+    </div>
+  )
 }

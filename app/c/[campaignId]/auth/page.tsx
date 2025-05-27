@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 
@@ -9,23 +9,26 @@ export default function AuthPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const recordType = searchParams.get("type") as "video" | "audio" | "text"
-  const { user, loading, isDemo } = useAuth()
+  const { user, loading } = useAuth()
+  const [hasRedirected, setHasRedirected] = useState(false)
 
   useEffect(() => {
-    if (loading) return
+    if (loading || hasRedirected) return
 
-    if (user || isDemo) {
-      // User is authenticated or in demo mode, proceed to recording
+    if (user) {
+      // User is authenticated, proceed to recording
+      setHasRedirected(true)
       router.push(`/c/${params.campaignId}/record?type=${recordType}`)
     } else {
-      // Store redirect information in URL params (not sessionStorage)
+      // Store redirect information in URL params
       const redirectUrl = `/c/${params.campaignId}/record`
       const loginUrl = `/auth/login?redirect=${encodeURIComponent(redirectUrl)}&type=${recordType}&campaignId=${params.campaignId}`
 
       // User is not authenticated, redirect to login
+      setHasRedirected(true)
       router.push(loginUrl)
     }
-  }, [user, loading, isDemo, router, params.campaignId, recordType])
+  }, [user, loading, router, params.campaignId, recordType, hasRedirected])
 
   // Show loading while checking auth
   return (

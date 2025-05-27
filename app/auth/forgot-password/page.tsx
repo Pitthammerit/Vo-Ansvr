@@ -2,21 +2,26 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Mail, ArrowRight } from "lucide-react"
+import { ArrowLeft, Mail, ArrowRight, CheckCircle, AlertCircle } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { AuthGuard } from "@/components/auth-guard"
 import Link from "next/link"
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
-  const { resetPassword, isDemo } = useAuth()
+  const { resetPassword, loading: authLoading } = useAuth()
 
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+
+  useEffect(() => {
+    // Clear any errors when inputs change
+    if (error) setError("")
+  }, [email])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,10 +35,10 @@ export default function ForgotPasswordPage() {
       if (error) {
         setError(error.message)
       } else {
-        setSuccess("Password reset email sent! Check your inbox.")
+        setSuccess("Password reset email sent! Check your inbox for instructions.")
       }
     } catch (err) {
-      setError("An unexpected error occurred")
+      setError("An unexpected error occurred. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -52,13 +57,6 @@ export default function ForgotPasswordPage() {
           </div>
           <div className="w-6" />
         </div>
-
-        {/* Demo Mode Banner */}
-        {isDemo && (
-          <div className="mx-4 mb-4 p-3 bg-blue-900/20 border border-blue-700 rounded-lg">
-            <p className="text-blue-300 text-sm text-center">🎭 Demo Mode - Password reset is not available</p>
-          </div>
-        )}
 
         {/* Forgot Password Form */}
         <div className="flex-1 flex items-center justify-center p-4">
@@ -85,20 +83,22 @@ export default function ForgotPasswordPage() {
               </div>
 
               {error && (
-                <div className="bg-red-900/20 border border-red-700 p-3" style={{ borderRadius: "12px" }}>
+                <div className="bg-red-900/20 border border-red-700 p-3 rounded-lg flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                   <p className="text-red-400 text-sm">{error}</p>
                 </div>
               )}
 
               {success && (
-                <div className="bg-green-900/20 border border-green-700 p-3" style={{ borderRadius: "12px" }}>
+                <div className="bg-green-900/20 border border-green-700 p-3 rounded-lg flex items-start gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
                   <p className="text-green-400 text-sm">{success}</p>
                 </div>
               )}
 
               <button
                 type="submit"
-                disabled={loading || isDemo}
+                disabled={loading || authLoading}
                 className="w-full bg-[#2DAD71] hover:bg-[#2DAD71]/90 disabled:bg-gray-600 text-white font-semibold py-3 px-6 transition-all flex items-center justify-center gap-2"
                 style={{ borderRadius: "6px" }}
               >

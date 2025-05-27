@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Play, Video, Mic, Type } from "lucide-react"
+import { TopNavButton } from "@/components/TopNavButton"
 
 export default function CampaignPage() {
   const params = useParams()
@@ -15,6 +16,8 @@ export default function CampaignPage() {
   const [showThumbnail, setShowThumbnail] = useState(false)
   const [videoLoaded, setVideoLoaded] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
+
+  const campaignId = params.campaignId as string
 
   // Welcome video ID from Cloudflare
   const welcomeVideoId = "80c576b4fdece39a6c8abddc1aa2f7bc"
@@ -112,18 +115,9 @@ export default function CampaignPage() {
   }
 
   const handleResponseType = (type: "video" | "audio" | "text") => {
-    // Check if we have Supabase configured
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      // Demo mode - skip auth and go directly to recording
-      console.log("🎭 Demo mode: Skipping authentication")
-      router.push(`/c/${params.campaignId}/record?type=${type}`)
-    } else {
-      // Production mode - go through auth
-      router.push(`/c/${params.campaignId}/auth?type=${type}`)
-    }
+    // Always require authentication for all campaigns (including demo)
+    console.log("🔐 Requiring authentication for campaign:", campaignId)
+    router.push(`/c/${campaignId}/auth?type=${type}`)
   }
 
   // Show play button when:
@@ -140,6 +134,9 @@ export default function CampaignPage() {
           ANS/R<span className="text-red-500">.</span>
         </div>
       </div>
+
+      {/* Top Right Navigation Button */}
+      <TopNavButton />
 
       {/* Video Container */}
       <div className="relative w-full h-screen">

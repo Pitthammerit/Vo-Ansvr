@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react"
+import { ArrowLeft, Mail, Lock, ArrowRight, Eye, EyeOff, AlertCircle } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { AuthGuard } from "@/components/auth-guard"
 import Link from "next/link"
@@ -12,7 +12,7 @@ import Link from "next/link"
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { signIn, isDemo, user } = useAuth()
+  const { signIn, loading: authLoading } = useAuth()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -25,14 +25,13 @@ export default function LoginPage() {
   const recordType = searchParams.get("type")
   const campaignId = searchParams.get("campaignId")
 
-  // If user is already logged in, redirect immediately
+  // Check for verification success
+  const emailVerified = searchParams.get("emailVerified") === "true"
+
   useEffect(() => {
-    if (user && redirectTo && recordType) {
-      router.push(`${redirectTo}?type=${recordType}`)
-    } else if (user && !redirectTo) {
-      router.push("/dashboard")
-    }
-  }, [user, redirectTo, recordType, router])
+    // Clear any errors when inputs change
+    if (error) setError("")
+  }, [email, password])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,7 +42,11 @@ export default function LoginPage() {
       const { error } = await signIn(email, password)
 
       if (error) {
-        setError(error.message)
+        if (error.message.includes("Email not confirmed")) {
+          setError("Please verify your email before logging in. Check your inbox for a verification link.")
+        } else {
+          setError(error.message)
+        }
       } else {
         // Successful login - redirect based on params
         if (redirectTo && recordType) {
@@ -53,7 +56,7 @@ export default function LoginPage() {
         }
       }
     } catch (err) {
-      setError("An unexpected error occurred")
+      setError("An unexpected error occurred. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -73,10 +76,10 @@ export default function LoginPage() {
           <div className="w-6" />
         </div>
 
-        {/* Demo Mode Banner */}
-        {isDemo && (
-          <div className="mx-4 mb-4 p-3 bg-blue-900/20 border border-blue-700 rounded-lg">
-            <p className="text-blue-300 text-sm text-center">🎭 Demo Mode - Authentication is simulated</p>
+        {/* Email Verification Success */}
+        {emailVerified && (
+          <div className="mx-4 mb-4 p-3 bg-green-900/20 border border-green-700 rounded-lg">
+            <p className="text-green-300 text-sm text-center">✅ Email verified successfully! You can now log in.</p>
           </div>
         )}
 
@@ -131,14 +134,15 @@ export default function LoginPage() {
               </div>
 
               {error && (
-                <div className="bg-red-900/20 border border-red-700 p-3" style={{ borderRadius: "12px" }}>
+                <div className="bg-red-900/20 border border-red-700 p-3 rounded-lg flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                   <p className="text-red-400 text-sm">{error}</p>
                 </div>
               )}
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || authLoading}
                 className="w-full bg-[#2DAD71] hover:bg-[#2DAD71]/90 disabled:bg-gray-600 text-white font-semibold py-3 px-6 transition-all flex items-center justify-center gap-2"
                 style={{ borderRadius: "6px" }}
               >
