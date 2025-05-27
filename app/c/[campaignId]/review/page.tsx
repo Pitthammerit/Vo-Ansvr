@@ -469,6 +469,20 @@ export default function ReviewPage() {
 
   const handleSend = async () => {
     try {
+      // Stop video playback if it's currently playing
+      if (recordType === "video" && videoRef.current && !videoRef.current.paused) {
+        console.log("⏸️ Pausing video before upload")
+        videoRef.current.pause()
+        setIsPlaying(false)
+      }
+
+      // Stop audio playback if it's currently playing
+      if (recordType === "audio" && audioRef.current && !audioRef.current.paused) {
+        console.log("⏸️ Pausing audio before upload")
+        audioRef.current.pause()
+        setIsPlaying(false)
+      }
+
       setUploading(true)
       setUploadProgress(0)
       setQuoteChangeCount(0)

@@ -248,18 +248,12 @@ export default function RecordPage() {
           if (prev <= 1) {
             clearInterval(countdownInterval)
 
-            // Play the fourth tone (D - five semitones higher than A)
-            playWoodStickSound(293.66, 330) // D and E harmony
+            // Play the final E tone (moved from 5th to 4th position)
+            playWoodStickSound(330, 330) // Pure E tone
 
             setShowThumbsUp(true)
             setTimeout(() => {
               setShowThumbsUp(false)
-
-              // Play final E tone 50ms before recording starts
-              setTimeout(() => {
-                playWoodStickSound(330, 330) // Pure E tone
-              }, 450) // 500ms - 50ms = 450ms delay
-
               startActualRecording()
             }, 500)
             return 0
