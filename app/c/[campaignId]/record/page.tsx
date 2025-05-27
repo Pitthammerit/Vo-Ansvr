@@ -599,24 +599,18 @@ export default function RecordPage() {
       <div className="flex flex-col h-screen bg-black text-white">
         {/* Discard Warning Overlay */}
         {showDiscardWarning && (
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-50">
             <div className="text-center max-w-sm mx-4">
-              <h2 className="text-2xl font-bold text-white mb-6">Are you sure you want to discard the message?</h2>
+              <h2 className="text-2xl font-bold text-white mb-8">Are you sure you want to discard the message?</h2>
 
-              <div className="flex justify-center gap-6">
-                {/* No Button - Green (Keep message) */}
-                <button
-                  onClick={handleDiscardCancel}
-                  className="w-16 h-16 bg-[#2DAD71] hover:bg-[#2DAD71]/90 rounded-full flex items-center justify-center transition-all"
-                >
+              <div className="flex justify-center gap-8">
+                {/* No Button - Green Glass */}
+                <button onClick={handleDiscardCancel} className="glass-button-circular glass-button-green">
                   <span className="text-white font-bold text-lg">No</span>
                 </button>
 
-                {/* Yes Button - Red (Discard message) */}
-                <button
-                  onClick={handleDiscardConfirm}
-                  className="w-16 h-16 bg-[#DC2626] hover:bg-[#DC2626]/90 rounded-full flex items-center justify-center transition-all"
-                >
+                {/* Yes Button - Red Glass */}
+                <button onClick={handleDiscardConfirm} className="glass-button-circular glass-button-red">
                   <span className="text-white font-bold text-lg">Yes</span>
                 </button>
               </div>
