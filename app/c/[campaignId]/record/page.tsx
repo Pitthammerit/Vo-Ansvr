@@ -574,8 +574,9 @@ export default function RecordPage() {
     compressor.connect(audioContext.destination)
 
     // Set frequencies for gentle wooden contact
-    oscillator1.frequency.setValueAtTime(220, audioContext.currentTime) // Warm low tone
-    oscillator2.frequency.setValueAtTime(440, audioContext.currentTime) // Gentle harmonic
+    // Set frequencies for gentle wooden contact - A and E notes (perfect fifth)
+    oscillator1.frequency.setValueAtTime(220, audioContext.currentTime) // A3 note
+    oscillator2.frequency.setValueAtTime(330, audioContext.currentTime) // E4 note (perfect fifth above A3)
 
     // Use sine and triangle waves for smoother, calmer sound
     oscillator1.type = "sine"

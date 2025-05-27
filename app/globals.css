@@ -97,7 +97,7 @@ video {
   border-radius: 6px;
 }
 
-/* Recording specific animations - using separate properties only */
+/* Recording specific animations - using separate properties */
 @keyframes recording-pulse {
   0%,
   100% {
@@ -184,4 +184,9 @@ video {
   animation-iteration-count: 1;
   animation-direction: normal;
   animation-fill-mode: forwards;
+}
+
+/* Remove the old shorthand animation class */
+.progress-circle {
+  /* Use .progress-circle-animation instead */
 }
