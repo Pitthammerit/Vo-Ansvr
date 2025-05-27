@@ -247,23 +247,35 @@ export default function RecordPage() {
         setCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(countdownInterval)
+
+            // Play the fourth tone (D - five semitones higher than A)
+            playWoodStickSound(293.66, 330) // D and E harmony
+
             setShowThumbsUp(true)
             setTimeout(() => {
               setShowThumbsUp(false)
+
+              // Play final E tone 50ms before recording starts
+              setTimeout(() => {
+                playWoodStickSound(330, 330) // Pure E tone
+              }, 450) // 500ms - 50ms = 450ms delay
+
               startActualRecording()
             }, 500)
             return 0
           }
-          // Play metronome sound for each countdown tick
-          playWoodStickSound()
+
+          // Play A tone for countdown 3, 2, 1
+          playWoodStickSound(220, 330) // A and E harmony
+
           // Trigger button pulse animation
           setButtonPulseKey((prevKey) => prevKey + 1)
           return prev - 1
         })
       }, 1000)
 
-      // Play initial sound and trigger first pulse
-      playWoodStickSound()
+      // Play initial A tone and trigger first pulse
+      playWoodStickSound(220, 330) // A and E harmony
       setButtonPulseKey((prevKey) => prevKey + 1)
       countdownRef.current = countdownInterval
     }, 1500) // Show "getting ready" for 1.5 seconds
@@ -542,7 +554,7 @@ export default function RecordPage() {
     }
   }, [recordedUrl])
 
-  const playWoodStickSound = () => {
+  const playWoodStickSound = (baseFreq = 220, harmonicFreq = 330) => {
     // Create a calming wood stick sound using Web Audio API
     const audioContext = new (window.AudioContext || window.webkitAudioContext)()
 
@@ -574,9 +586,8 @@ export default function RecordPage() {
     compressor.connect(audioContext.destination)
 
     // Set frequencies for gentle wooden contact
-    // Set frequencies for gentle wooden contact - A and E notes (perfect fifth)
-    oscillator1.frequency.setValueAtTime(220, audioContext.currentTime) // A3 note
-    oscillator2.frequency.setValueAtTime(330, audioContext.currentTime) // E4 note (perfect fifth above A3)
+    oscillator1.frequency.setValueAtTime(baseFreq, audioContext.currentTime) // Base note
+    oscillator2.frequency.setValueAtTime(harmonicFreq, audioContext.currentTime) // Harmonic note
 
     // Use sine and triangle waves for smoother, calmer sound
     oscillator1.type = "sine"
