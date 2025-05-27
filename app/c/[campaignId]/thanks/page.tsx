@@ -68,24 +68,18 @@ export default function ThanksPage() {
           />
         </video>
 
-        {/* Send Another Message Text - Above buttons */}
-        <div className="absolute inset-x-4 bottom-28 z-20 text-center">
-          <h2 className="text-xl font-bold text-white mb-2">Send another message?</h2>
+        {/* Send Another Message Text - Using master design system */}
+        <div className="master-text-container">
+          <h2 className="master-text-above-buttons">Send another message?</h2>
         </div>
 
-        {/* Action Buttons */}
-        <div className="absolute bottom-8 inset-x-4 z-20">
+        {/* Action Buttons - Using master design system */}
+        <div className="master-button-container">
           <div className="flex justify-center gap-6 max-w-sm mx-auto">
-            <button
-              onClick={handleSendAnother}
-              className="w-16 h-16 bg-[#2DAD71]/50 backdrop-blur-md hover:bg-[#2DAD71]/60 rounded-full flex items-center justify-center transition-all shadow-lg"
-            >
+            <button onClick={handleSendAnother} className="glass-button-circular glass-button-green">
               <span className="text-white font-bold text-lg">Yes</span>
             </button>
-            <button
-              onClick={handleDone}
-              className="w-16 h-16 bg-white/50 backdrop-blur-md hover:bg-white/60 rounded-full flex items-center justify-center transition-all shadow-lg"
-            >
+            <button onClick={handleDone} className="glass-button-circular glass-button-white">
               <span className="text-black font-bold text-lg">No</span>
             </button>
           </div>

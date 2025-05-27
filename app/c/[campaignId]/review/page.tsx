@@ -721,15 +721,20 @@ export default function ReviewPage() {
         </div>
 
         {/* Ready to Send Message - Fixed positioning with better spacing */}
-        <div className="absolute bottom-36 inset-x-4 z-20 text-center">
+        {/* <div className="absolute bottom-36 inset-x-4 z-20 text-center">
           <h2 className="text-xl font-bold text-white mb-2 py-2 px-4 inline-block">Ready to send?</h2>
+        </div> */}
+
+        {/* Ready to Send Message - Using master design system */}
+        <div className="master-text-container">
+          <h2 className="master-text-above-buttons">Ready to send?</h2>
         </div>
 
         {/* Smaller Circular Action Buttons */}
-        <div className="absolute bottom-16 inset-x-4 z-20">
-          <div className="flex gap-6 justify-center max-w-sm mx-auto">
-            {/* Yes Button - Smaller Circle */}
-            <button
+        {/* <div className="absolute bottom-16 inset-x-4 z-20">
+          <div className="flex gap-6 justify-center max-w-sm mx-auto"> */}
+        {/* Yes Button - Smaller Circle */}
+        {/* <button
               onClick={handleSend}
               disabled={uploading}
               className="w-16 h-16 bg-[#2DAD71]/50 backdrop-blur-md hover:bg-[#2DAD71]/60 disabled:bg-gray-600/50 rounded-full flex items-center justify-center transition-all shadow-lg"
@@ -739,13 +744,40 @@ export default function ReviewPage() {
               ) : (
                 <Check className="w-6 h-6 text-white" strokeWidth={3} />
               )}
-            </button>
+            </button> */}
 
-            {/* No Button - Smaller Circle */}
-            <button
+        {/* No Button - Smaller Circle */}
+        {/* <button
               onClick={handleRetake}
               disabled={uploading}
               className="w-16 h-16 bg-white/50 backdrop-blur-md hover:bg-white/60 disabled:bg-gray-600/50 rounded-full flex items-center justify-center transition-all shadow-lg"
+            >
+              <X className="w-6 h-6 text-black" strokeWidth={3} />
+            </button>
+          </div>
+        </div> */}
+
+        {/* Action Buttons - Using master design system */}
+        <div className="master-button-container">
+          <div className="flex gap-6 justify-center max-w-sm mx-auto">
+            {/* Yes Button */}
+            <button
+              onClick={handleSend}
+              disabled={uploading}
+              className="glass-button-circular glass-button-green disabled:bg-gray-600/50"
+            >
+              {uploading ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : (
+                <Check className="w-6 h-6 text-white" strokeWidth={3} />
+              )}
+            </button>
+
+            {/* No Button */}
+            <button
+              onClick={handleRetake}
+              disabled={uploading}
+              className="glass-button-circular glass-button-white disabled:bg-gray-600/50"
             >
               <X className="w-6 h-6 text-black" strokeWidth={3} />
             </button>

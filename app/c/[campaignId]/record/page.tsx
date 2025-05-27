@@ -851,7 +851,7 @@ export default function RecordPage() {
 
           {/* Recording Controls */}
           {!permissionDenied && !storageError && (
-            <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-20">
+            <div className="master-button-container">
               <div className="flex flex-col items-center">
                 {isRecording ? (
                   <div className="flex flex-col items-center">
@@ -879,11 +879,8 @@ export default function RecordPage() {
                       {/* Record Button with enhanced pulsing */}
                       <button
                         onClick={stopRecording}
-                        className="w-16 h-16 bg-red-600/50 backdrop-blur-md rounded-full flex items-center justify-center relative z-10 mx-2 my-2 transition-all"
+                        className="glass-button-circular glass-button-red mx-2 my-2"
                         style={{
-                          backdropFilter: "blur(8px)",
-                          border: "none",
-                          boxShadow: "none",
                           animation: "recording-pulse 1.5s ease-in-out infinite",
                         }}
                       >
@@ -900,20 +897,15 @@ export default function RecordPage() {
                     <p className="text-white text-sm mb-4 font-light">Start recording...</p>
 
                     <div className="relative w-20 h-20 flex items-center justify-center">
-                      {/* Ready to record button with enhanced pulsing when countdown is active */}
+                      {/* Ready to record button */}
                       <button
                         onClick={startCountdown}
-                        className={`w-16 h-16 bg-red-600/50 backdrop-blur-md rounded-full flex items-center justify-center transition-all ${
-                          countdown > 0 ? "" : "hover:scale-105 hover:bg-red-600/60"
-                        }`}
+                        className={`glass-button-circular glass-button-red ${countdown > 0 ? "" : "hover:scale-105"}`}
                         style={{
-                          backdropFilter: "blur(8px)",
-                          border: "none",
-                          boxShadow: "none",
                           animation: countdown > 0 ? `countdown-pulse-trigger 0.6s ease-in-out` : "none",
                           animationIterationCount: 1,
                         }}
-                        key={buttonPulseKey} // This forces re-animation on each pulse
+                        key={buttonPulseKey}
                       >
                         {/* No content - full blurry red */}
                       </button>

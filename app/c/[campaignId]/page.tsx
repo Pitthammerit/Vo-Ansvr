@@ -176,18 +176,17 @@ export default function CampaignPage() {
         )}
 
         {/* Response Text */}
-        <div className="absolute bottom-40 inset-x-4 z-20 text-center">
-          <p className="text-white text-lg font-medium">How would you like to respond?</p>
+        <div className="master-text-container">
+          <p className="master-text-above-buttons">How would you like to respond?</p>
         </div>
 
         {/* Response Buttons */}
-        <div className="absolute bottom-20 inset-x-4 z-20">
+        <div className="master-button-container">
           <div className="flex justify-center items-center gap-4 max-w-md mx-auto">
             {/* Audio Button */}
             <button
               onClick={() => handleResponseType("audio")}
-              className="bg-green-500/20 backdrop-blur-md hover:bg-green-500/30 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 transition-all border border-green-400/20"
-              style={{ width: "64px", height: "64px", borderRadius: "6px" }}
+              className="glass-button-response-small"
               aria-label="Respond with audio"
             >
               <Mic className="w-4 h-4" strokeWidth={1.5} />
@@ -197,8 +196,7 @@ export default function CampaignPage() {
             {/* Video Button - Bigger */}
             <button
               onClick={() => handleResponseType("video")}
-              className="bg-green-500/20 backdrop-blur-md hover:bg-green-500/30 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 transition-all shadow-lg border border-green-400/30"
-              style={{ width: "76px", height: "76px", borderRadius: "6px" }}
+              className="glass-button-response-large"
               aria-label="Respond with video"
             >
               <Video className="w-5 h-5" strokeWidth={1.5} />
@@ -208,8 +206,7 @@ export default function CampaignPage() {
             {/* Text Button */}
             <button
               onClick={() => handleResponseType("text")}
-              className="bg-green-500/20 backdrop-blur-md hover:bg-green-500/30 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 transition-all border border-green-400/20"
-              style={{ width: "64px", height: "64px", borderRadius: "6px" }}
+              className="glass-button-response-small"
               aria-label="Respond with text"
             >
               <Type className="w-4 h-4" strokeWidth={1.5} />
