@@ -176,7 +176,7 @@ export default function CampaignPage() {
         )}
 
         {/* Response Text */}
-        <div className="absolute bottom-[154px] inset-x-4 z-20 text-center">
+        <div className="absolute bottom-[164px] inset-x-4 z-20 text-center">
           <p className="master-text-above-buttons">How would you like to respond?</p>
         </div>
 
