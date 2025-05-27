@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Play, Video, Mic, Type } from "lucide-react"
+import { TopNavButton } from "@/components/TopNavButton"
 
 export default function CampaignPage() {
   const params = useParams()
@@ -15,6 +16,8 @@ export default function CampaignPage() {
   const [showThumbnail, setShowThumbnail] = useState(false)
   const [videoLoaded, setVideoLoaded] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
+
+  const campaignId = params.campaignId as string
 
   // Welcome video ID from Cloudflare
   const welcomeVideoId = "80c576b4fdece39a6c8abddc1aa2f7bc"
@@ -112,7 +115,9 @@ export default function CampaignPage() {
   }
 
   const handleResponseType = (type: "video" | "audio" | "text") => {
-    router.push(`/c/${params.campaignId}/auth?type=${type}`)
+    // Always require authentication for all campaigns (including demo)
+    console.log("🔐 Requiring authentication for campaign:", campaignId)
+    router.push(`/c/${campaignId}/auth?type=${type}`)
   }
 
   // Show play button when:
@@ -129,6 +134,9 @@ export default function CampaignPage() {
           ANS/R<span className="text-red-500">.</span>
         </div>
       </div>
+
+      {/* Top Right Navigation Button */}
+      <TopNavButton />
 
       {/* Video Container */}
       <div className="relative w-full h-screen">
@@ -178,7 +186,7 @@ export default function CampaignPage() {
             {/* Audio Button */}
             <button
               onClick={() => handleResponseType("audio")}
-              className="bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 transition-all"
+              className="bg-green-500/20 backdrop-blur-md hover:bg-green-500/30 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 transition-all border border-green-400/20"
               style={{ width: "64px", height: "64px", borderRadius: "6px" }}
               aria-label="Respond with audio"
             >
@@ -189,7 +197,7 @@ export default function CampaignPage() {
             {/* Video Button - Bigger */}
             <button
               onClick={() => handleResponseType("video")}
-              className="bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 transition-all shadow-lg ring-2 ring-white/20"
+              className="bg-green-500/20 backdrop-blur-md hover:bg-green-500/30 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 transition-all shadow-lg border border-green-400/30"
               style={{ width: "76px", height: "76px", borderRadius: "6px" }}
               aria-label="Respond with video"
             >
@@ -200,7 +208,7 @@ export default function CampaignPage() {
             {/* Text Button */}
             <button
               onClick={() => handleResponseType("text")}
-              className="bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 transition-all"
+              className="bg-green-500/20 backdrop-blur-md hover:bg-green-500/30 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 transition-all border border-green-400/20"
               style={{ width: "64px", height: "64px", borderRadius: "6px" }}
               aria-label="Respond with text"
             >

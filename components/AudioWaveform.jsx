@@ -85,7 +85,7 @@ const AudioWaveform = ({ state = "idle" }) => {
   }, [state])
 
   return (
-    <div className="w-full bg-black/20 rounded-lg p-4">
+    <div className="w-full p-8">
       <canvas ref={canvasRef} width={800} height={120} className="w-full h-auto rounded" />
     </div>
   )
