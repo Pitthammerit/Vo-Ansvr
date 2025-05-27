@@ -176,12 +176,12 @@ export default function CampaignPage() {
         )}
 
         {/* Response Text */}
-        <div className="absolute bottom-28 inset-x-4 z-20 text-center">
+        <div className="absolute bottom-40 inset-x-4 z-20 text-center">
           <p className="text-white text-lg font-medium">How would you like to respond?</p>
         </div>
 
         {/* Response Buttons */}
-        <div className="absolute bottom-8 inset-x-4 z-20">
+        <div className="absolute bottom-20 inset-x-4 z-20">
           <div className="flex justify-center items-center gap-4 max-w-md mx-auto">
             {/* Audio Button */}
             <button
