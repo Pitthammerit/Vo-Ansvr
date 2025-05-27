@@ -248,7 +248,7 @@ export default function RecordPage() {
           if (prev <= 1) {
             clearInterval(countdownInterval)
 
-            // Play the final E tone (moved from 5th to 4th position)
+            // Play the final E tone (moved from fifth to fourth position)
             playWoodStickSound(330, 330) // Pure E tone
 
             setShowThumbsUp(true)

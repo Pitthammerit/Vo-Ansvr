@@ -471,14 +471,14 @@ export default function ReviewPage() {
     try {
       // Stop video playback if it's currently playing
       if (recordType === "video" && videoRef.current && !videoRef.current.paused) {
-        console.log("⏸️ Pausing video before upload")
+        console.log("⏸️ Stopping video playback before upload")
         videoRef.current.pause()
         setIsPlaying(false)
       }
 
       // Stop audio playback if it's currently playing
       if (recordType === "audio" && audioRef.current && !audioRef.current.paused) {
-        console.log("⏸️ Pausing audio before upload")
+        console.log("⏸️ Stopping audio playback before upload")
         audioRef.current.pause()
         setIsPlaying(false)
       }
