@@ -5,6 +5,19 @@ import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Play, Pause, AlertCircle, Check, X } from "lucide-react"
 import { QuoteService, type Quote } from "@/lib/quote-service"
 import AudioWaveform from "@/components/AudioWaveform"
+import { createClient } from "@supabase/supabase-js"
+
+const getSupabaseClient = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn("⚠️ Supabase environment variables not configured - using demo mode")
+    return null
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey)
+}
 
 // Extend window type for recording data
 declare global {
@@ -541,7 +554,7 @@ export default function ReviewPage() {
 
       {/* Upload Progress Overlay */}
       {uploading && (
-        <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-30">
+        <div className="absolute inset-0 bg-black flex items-center justify-center z-30">
           <div className="text-center max-w-lg mx-4 px-6">
             <h2 className="text-xl font-bold text-white mb-6">Your message is uploading...</h2>
 
@@ -650,13 +663,13 @@ export default function ReviewPage() {
             </div>
           ) : recordType === "audio" && recordedUrl ? (
             <div className="relative h-full">
-              {/* Simple dark background for audio */}
-              <div className="absolute inset-0 bg-gradient-to-b from-gray-900 to-black"></div>
-
-              {/* Audio Waveform Visualization */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-full max-w-4xl px-8">
-                  <AudioWaveform state={isPlaying ? "playing" : "preview"} />
+              {/* Same background as recording page */}
+              <div className="w-full h-full bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+                <div className="text-center w-full px-8">
+                  {/* Audio Waveform Visualization - Same as recording page */}
+                  <div className="mb-12 px-4">
+                    <AudioWaveform state={isPlaying ? "playing" : "idle"} />
+                  </div>
                 </div>
               </div>
 

@@ -59,7 +59,8 @@ export default function RecordPage() {
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
     if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error("Supabase environment variables are not configured")
+      console.warn("⚠️ Supabase environment variables not configured - using demo mode")
+      return null
     }
 
     return createClient(supabaseUrl, supabaseAnonKey)
@@ -776,13 +777,13 @@ export default function RecordPage() {
             <div className="text-center w-full px-8">
               {/* Audio Waveform Visualization - Only show during recording */}
               {isRecording && (
-                <div className="mb-8">
+                <div className="mb-12 px-4">
                   <AudioWaveform state="recording" />
                 </div>
               )}
               {/* Show static waveform after recording stops */}
               {!isRecording && recordedBlob && (
-                <div className="mb-8">
+                <div className="mb-12 px-4">
                   <AudioWaveform state="idle" />
                 </div>
               )}

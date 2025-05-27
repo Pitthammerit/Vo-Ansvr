@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { QuoteService, type Quote } from "@/lib/quote-service"
+import { useAuth } from "@/lib/auth-context"
+import { Button } from "@/components/ui/button"
+import { User, LogOut } from "lucide-react"
+import Link from "next/link"
 
 // Extend window type for preloaded quote service
 declare global {
@@ -21,6 +25,9 @@ export default function FinalPage() {
     console.log("🔄 Creating new quote service")
     return new QuoteService()
   })
+
+  // Add auth hook
+  const { user, signOut, isDemo } = useAuth()
 
   useEffect(() => {
     const initializeQuotes = async () => {
@@ -69,6 +76,31 @@ export default function FinalPage() {
           <h1 className="text-3xl font-bold text-white">Thank you!</h1>
           <p className="text-xl text-gray-300">You can close the page now!</p>
         </div>
+
+        {/* User Actions - Only show if user is authenticated */}
+        {(user || isDemo) && (
+          <div className="space-y-4">
+            <Link href="/dashboard">
+              <Button
+                className="w-full bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-semibold py-3 px-6 transition-all flex items-center justify-center gap-2"
+                style={{ borderRadius: "6px" }}
+              >
+                <User className="w-4 h-4" />
+                Go to Dashboard
+              </Button>
+            </Link>
+
+            <Button
+              onClick={signOut}
+              variant="outline"
+              className="w-full border-gray-600 text-gray-300 hover:bg-gray-800 font-semibold py-3 px-6 transition-all flex items-center justify-center gap-2"
+              style={{ borderRadius: "6px" }}
+            >
+              <LogOut className="w-4 h-4" />
+              {isDemo ? "Exit Demo" : "Sign Out"}
+            </Button>
+          </div>
+        )}
 
         {/* Quote Section */}
         {currentQuote && (

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Play, Video, Mic, Type } from "lucide-react"
+import { TopNavButton } from "@/components/TopNavButton"
 
 export default function CampaignPage() {
   const params = useParams()
@@ -15,6 +16,8 @@ export default function CampaignPage() {
   const [showThumbnail, setShowThumbnail] = useState(false)
   const [videoLoaded, setVideoLoaded] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
+
+  const campaignId = params.campaignId as string
 
   // Welcome video ID from Cloudflare
   const welcomeVideoId = "80c576b4fdece39a6c8abddc1aa2f7bc"
@@ -112,7 +115,9 @@ export default function CampaignPage() {
   }
 
   const handleResponseType = (type: "video" | "audio" | "text") => {
-    router.push(`/c/${params.campaignId}/auth?type=${type}`)
+    // Always require authentication for all campaigns (including demo)
+    console.log("🔐 Requiring authentication for campaign:", campaignId)
+    router.push(`/c/${campaignId}/auth?type=${type}`)
   }
 
   // Show play button when:
@@ -129,6 +134,9 @@ export default function CampaignPage() {
           ANS/R<span className="text-red-500">.</span>
         </div>
       </div>
+
+      {/* Top Right Navigation Button */}
+      <TopNavButton />
 
       {/* Video Container */}
       <div className="relative w-full h-screen">
