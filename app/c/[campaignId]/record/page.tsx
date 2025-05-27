@@ -543,55 +543,77 @@ export default function RecordPage() {
   }, [recordedUrl])
 
   const playWoodStickSound = () => {
-    // Create a more natural wood stick sound using Web Audio API
+    // Create a calming wood stick sound using Web Audio API
     const audioContext = new (window.AudioContext || window.webkitAudioContext)()
 
-    // Create multiple oscillators for a more complex, natural sound
+    // Create oscillators for a gentle, wooden sound
     const oscillator1 = audioContext.createOscillator()
     const oscillator2 = audioContext.createOscillator()
-    const oscillator3 = audioContext.createOscillator()
+    const noiseBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.1, audioContext.sampleRate)
+    const noiseSource = audioContext.createBufferSource()
+
+    // Create noise for natural wood texture
+    const noiseData = noiseBuffer.getChannelData(0)
+    for (let i = 0; i < noiseData.length; i++) {
+      noiseData[i] = (Math.random() * 2 - 1) * 0.1 // Very quiet noise
+    }
+    noiseSource.buffer = noiseBuffer
 
     const gainNode = audioContext.createGain()
+    const noiseGain = audioContext.createGain()
     const filter = audioContext.createBiquadFilter()
+    const compressor = audioContext.createDynamicsCompressor()
 
     // Connect the audio graph
     oscillator1.connect(gainNode)
     oscillator2.connect(gainNode)
-    oscillator3.connect(gainNode)
+    noiseSource.connect(noiseGain)
+    noiseGain.connect(gainNode)
     gainNode.connect(filter)
-    filter.connect(audioContext.destination)
+    filter.connect(compressor)
+    compressor.connect(audioContext.destination)
 
-    // Set frequencies for a more wooden, percussive sound
-    oscillator1.frequency.setValueAtTime(1200, audioContext.currentTime) // Main click
-    oscillator2.frequency.setValueAtTime(800, audioContext.currentTime) // Body resonance
-    oscillator3.frequency.setValueAtTime(2400, audioContext.currentTime) // High crack
+    // Set frequencies for gentle wooden contact
+    oscillator1.frequency.setValueAtTime(220, audioContext.currentTime) // Warm low tone
+    oscillator2.frequency.setValueAtTime(440, audioContext.currentTime) // Gentle harmonic
 
-    // Use sawtooth for more natural harmonics
-    oscillator1.type = "sawtooth"
+    // Use sine and triangle waves for smoother, calmer sound
+    oscillator1.type = "sine"
     oscillator2.type = "triangle"
-    oscillator3.type = "square"
 
-    // High-pass filter to simulate wood resonance
-    filter.type = "highpass"
-    filter.frequency.setValueAtTime(400, audioContext.currentTime)
-    filter.Q.setValueAtTime(1, audioContext.currentTime)
+    // Gentle low-pass filter for warmth
+    filter.type = "lowpass"
+    filter.frequency.setValueAtTime(800, audioContext.currentTime)
+    filter.Q.setValueAtTime(0.5, audioContext.currentTime)
 
-    // Sharp attack, quick decay for percussive sound
+    // Soft compressor settings
+    compressor.threshold.setValueAtTime(-24, audioContext.currentTime)
+    compressor.knee.setValueAtTime(30, audioContext.currentTime)
+    compressor.ratio.setValueAtTime(3, audioContext.currentTime)
+    compressor.attack.setValueAtTime(0.003, audioContext.currentTime)
+    compressor.release.setValueAtTime(0.25, audioContext.currentTime)
+
+    // Very gentle attack and longer, natural decay
     gainNode.gain.setValueAtTime(0, audioContext.currentTime)
-    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.001) // Very fast attack
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.08) // Quick decay
+    gainNode.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.01) // Gentle attack
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3) // Natural decay
 
-    // Start and stop the oscillators
+    // Noise envelope for texture
+    noiseGain.gain.setValueAtTime(0, audioContext.currentTime)
+    noiseGain.gain.linearRampToValueAtTime(0.05, audioContext.currentTime + 0.005)
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.15)
+
+    // Start and stop with gentle timing
     const startTime = audioContext.currentTime
-    const stopTime = startTime + 0.1
+    const stopTime = startTime + 0.35
 
     oscillator1.start(startTime)
     oscillator2.start(startTime)
-    oscillator3.start(startTime)
+    noiseSource.start(startTime)
 
     oscillator1.stop(stopTime)
     oscillator2.stop(stopTime)
-    oscillator3.stop(stopTime)
+    noiseSource.stop(stopTime)
   }
 
   if (recordType === "text") {
