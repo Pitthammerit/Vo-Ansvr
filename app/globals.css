@@ -97,7 +97,7 @@ video {
   border-radius: 6px;
 }
 
-/* Recording specific animations */
+/* Recording specific animations - using separate properties */
 @keyframes recording-pulse {
   0%,
   100% {
@@ -108,6 +108,15 @@ video {
     transform: scale(1.05);
     opacity: 0.8;
   }
+}
+
+.recording-pulse-animation {
+  animation-name: recording-pulse;
+  animation-duration: 2s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: normal;
+  animation-fill-mode: both;
 }
 
 @keyframes countdown-pulse-trigger {
@@ -129,6 +138,15 @@ video {
   }
 }
 
+.countdown-pulse-animation {
+  animation-name: countdown-pulse-trigger;
+  animation-duration: 1s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: 1;
+  animation-direction: normal;
+  animation-fill-mode: forwards;
+}
+
 /* Countdown text glow effect */
 @keyframes countdown-glow {
   0%,
@@ -138,6 +156,15 @@ video {
   50% {
     text-shadow: 0 0 30px rgba(255, 255, 255, 0.8);
   }
+}
+
+.countdown-glow-animation {
+  animation-name: countdown-glow;
+  animation-duration: 1s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-fill-mode: both;
 }
 
 /* Progress circle animation */
@@ -150,6 +177,16 @@ video {
   }
 }
 
+.progress-circle-animation {
+  animation-name: progress-circle;
+  animation-duration: var(--duration);
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+  animation-direction: normal;
+  animation-fill-mode: forwards;
+}
+
+/* Remove the old shorthand animation class */
 .progress-circle {
-  animation: progress-circle var(--duration) linear forwards;
+  /* Use .progress-circle-animation instead */
 }
