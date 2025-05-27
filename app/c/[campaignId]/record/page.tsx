@@ -13,6 +13,47 @@ interface Quote {
   author: string
 }
 
+const recordingPulseStyle = `
+  @keyframes recording-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  
+  @keyframes countdown-pulse {
+    0% { 
+      transform: scale(1); 
+      background-color: rgba(220, 38, 38, 0.5);
+    }
+    50% { 
+      transform: scale(1.15); 
+      background-color: rgba(220, 38, 38, 1);
+    }
+    100% { 
+      transform: scale(1); 
+      background-color: rgba(220, 38, 38, 0.5);
+    }
+  }
+
+  @keyframes countdown-pulse-trigger {
+    0% { 
+      transform: scale(1); 
+      background-color: rgba(220, 38, 38, 0.5);
+    }
+    20% { 
+      transform: scale(1.15); 
+      background-color: rgba(220, 38, 38, 1);
+    }
+    40% { 
+      transform: scale(1); 
+      background-color: rgba(220, 38, 38, 0.5);
+    }
+    100% { 
+      transform: scale(1); 
+      background-color: rgba(220, 38, 38, 0.5);
+    }
+  }
+`
+
 export default function RecordPage() {
   const params = useParams()
   const router = useRouter()
@@ -41,6 +82,7 @@ export default function RecordPage() {
   const [showError, setShowError] = useState(false)
   const [showDiscardWarning, setShowDiscardWarning] = useState(false)
   const [sending, setSending] = useState(false)
+  const [buttonPulseKey, setButtonPulseKey] = useState(0)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -59,7 +101,8 @@ export default function RecordPage() {
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
     if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error("Supabase environment variables are not configured")
+      console.warn("⚠️ Supabase environment variables not configured - using demo mode")
+      return null
     }
 
     return createClient(supabaseUrl, supabaseAnonKey)
@@ -213,12 +256,15 @@ export default function RecordPage() {
           }
           // Play metronome sound for each countdown tick
           playWoodStickSound()
+          // Trigger button pulse animation
+          setButtonPulseKey((prevKey) => prevKey + 1)
           return prev - 1
         })
       }, 1000)
 
-      // Play initial sound
+      // Play initial sound and trigger first pulse
       playWoodStickSound()
+      setButtonPulseKey((prevKey) => prevKey + 1)
       countdownRef.current = countdownInterval
     }, 1500) // Show "getting ready" for 1.5 seconds
   }, [])
@@ -279,6 +325,11 @@ export default function RecordPage() {
       mediaRecorder.start(5000) // 5-second chunks
       setIsRecording(true)
       setRecordingTime(0)
+      countdown > 0 && (
+        <div className="absolute top-1/3 inset-x-4 z-20 text-center">
+          <h2 className="text-2xl font-bold text-white mb-2 animate-pulse">Get Ready</h2>
+        </div>
+      )
       setShowRecordingText(true)
       setRecordingSize(0)
 
@@ -308,7 +359,7 @@ export default function RecordPage() {
       console.error("Error starting recording:", error)
       setStorageError(true)
     }
-  }, [recordType, params.campaignId, router])
+  }, [recordType, params.campaignId, router, countdown])
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecording) {
@@ -384,8 +435,35 @@ export default function RecordPage() {
     // For text type, check if there's content and show warning
     if (recordType === "text" && textResponse.trim()) {
       setShowDiscardWarning(true)
-    } else {
+      return
+    }
+
+    // Enhanced back navigation logic
+    // Check if user came from a specific source
+    const referrer = document.referrer
+    const currentOrigin = window.location.origin
+
+    // If referrer is from the same origin, try to go back intelligently
+    if (referrer && referrer.startsWith(currentOrigin)) {
+      const referrerPath = new URL(referrer).pathname
+
+      // If came from dashboard, go back to dashboard
+      if (referrerPath === "/dashboard") {
+        router.push("/dashboard")
+        return
+      }
+
+      // If came from campaign welcome screen, go back there
+      if (referrerPath === `/c/${params.campaignId}`) {
+        router.push(`/c/${params.campaignId}`)
+        return
+      }
+
+      // For any other internal page, use browser back
       router.back()
+    } else {
+      // If no referrer or external referrer, default to campaign welcome screen
+      router.push(`/c/${params.campaignId}`)
     }
   }
 
@@ -563,7 +641,7 @@ export default function RecordPage() {
               if (showError) setShowError(false)
             }}
             placeholder="What's on your mind? No need to be formal, just tell me straight up..."
-            className="w-full h-48 bg-transparent text-white placeholder-gray-400 resize-none focus:outline-none font-light text-lg leading-relaxed"
+            className="w-full h-96 bg-transparent text-white placeholder-gray-400 resize-none focus:outline-none font-light text-lg leading-relaxed"
             style={{ borderRadius: "6px" }}
           />
 
@@ -598,264 +676,278 @@ export default function RecordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* Header */}
-      <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between">
-        <button onClick={() => router.back()} className="text-white">
-          <ArrowLeft className="w-6 h-6" />
-        </button>
-        <div className="text-white font-bold text-lg">
-          ANS/R<span className="text-red-500">.</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {connectionQuality === "good" ? (
-            <Wifi className="w-4 h-4 text-green-400" />
-          ) : connectionQuality === "poor" ? (
-            <WifiOff className="w-4 h-4 text-yellow-400" />
-          ) : null}
-        </div>
-      </div>
-
-      {/* Storage Error Overlay */}
-      {storageError && (
-        <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-30">
-          <div
-            className="bg-gray-900 p-8 max-w-sm mx-4 text-center border border-gray-700"
-            style={{ borderRadius: "12px" }}
-          >
-            <div className="mb-6">
-              <AlertTriangle className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">Storage Issue</h3>
-              <p className="text-gray-300 text-sm leading-relaxed">
-                Your device is low on storage space. We'll use a more efficient recording method.
-              </p>
-            </div>
-            <div className="space-y-3">
-              <button
-                onClick={handleStorageRetry}
-                className="w-full bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-semibold py-3 px-6 transition-all"
-                style={{ borderRadius: "6px" }}
-              >
-                Continue Recording
-              </button>
-              <button
-                onClick={() => router.back()}
-                className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-6 transition-all"
-                style={{ borderRadius: "6px" }}
-              >
-                Go Back
-              </button>
-            </div>
+    <>
+      <style jsx>{recordingPulseStyle}</style>
+      <div className="min-h-screen bg-black text-white relative overflow-hidden">
+        {/* Header */}
+        <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between">
+          <button onClick={handleBackClick} className="text-white">
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <div className="text-white font-bold text-lg">
+            ANS/R<span className="text-red-500">.</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {connectionQuality === "good" ? (
+              <Wifi className="w-4 h-4 text-green-400" />
+            ) : connectionQuality === "poor" ? (
+              <WifiOff className="w-4 h-4 text-yellow-400" />
+            ) : null}
           </div>
         </div>
-      )}
 
-      {/* Permission Denied Overlay */}
-      {permissionDenied && (
-        <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-30">
-          <div
-            className="bg-gray-900 p-8 max-w-sm mx-4 text-center border border-gray-700"
-            style={{ borderRadius: "12px" }}
-          >
-            <div className="mb-6">
-              {recordType === "video" ? (
-                <Camera className="w-16 h-16 text-red-400 mx-auto mb-4" />
-              ) : (
-                <MicIcon className="w-16 h-16 text-red-400 mx-auto mb-4" />
-              )}
-              <h3 className="text-xl font-bold text-white mb-2">Camera & Microphone Access</h3>
-              <p className="text-gray-300 text-sm leading-relaxed">
-                To record your {recordType} response, we need access to your{" "}
-                {recordType === "video" ? "camera and microphone" : "microphone"}.
-              </p>
-            </div>
-            <div className="space-y-3">
-              <button
-                onClick={handleAllowAgain}
-                className="w-full bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-semibold py-3 px-6 rounded-lg transition-all"
-                style={{ borderRadius: "6px" }}
-              >
-                Try Again
-              </button>
-              <button
-                onClick={() => router.back()}
-                className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition-all"
-                style={{ borderRadius: "6px" }}
-              >
-                Go Back
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Enhanced Countdown Overlay */}
-      {countdown !== 0 && (
-        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-25">
-          <div className="text-center">
-            {countdown === -1 ? (
-              // "Getting ready for recording" phase
-              <div className="animate-pulse">
-                <p className="text-white text-2xl font-light mb-4">Getting ready for recording</p>
-                <div className="flex justify-center space-x-1">
-                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
-                  <div
-                    className="w-2 h-2 bg-white rounded-full animate-bounce"
-                    style={{ animationDelay: "150ms" }}
-                  ></div>
-                  <div
-                    className="w-2 h-2 bg-white rounded-full animate-bounce"
-                    style={{ animationDelay: "300ms" }}
-                  ></div>
-                </div>
+        {/* Storage Error Overlay */}
+        {storageError && (
+          <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-30">
+            <div
+              className="bg-gray-900 p-8 max-w-sm mx-4 text-center border border-gray-700"
+              style={{ borderRadius: "12px" }}
+            >
+              <div className="mb-6">
+                <AlertTriangle className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">Storage Issue</h3>
+                <p className="text-gray-300 text-sm leading-relaxed">
+                  Your device is low on storage space. We'll use a more efficient recording method.
+                </p>
               </div>
-            ) : (
-              // Countdown numbers phase
-              <div>
-                <div
-                  className="text-8xl font-bold text-white mb-4 transition-all duration-300 animate-pulse"
-                  style={{
-                    textShadow: "0 0 20px rgba(255, 255, 255, 0.5)",
-                    transform: countdown === 1 ? "scale(1.1)" : "scale(1)",
-                  }}
+              <div className="space-y-3">
+                <button
+                  onClick={handleStorageRetry}
+                  className="w-full bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-semibold py-3 px-6 transition-all"
+                  style={{ borderRadius: "6px" }}
                 >
-                  {countdown}
-                </div>
-                <p className="text-white text-xl font-light">Get ready...</p>
+                  Continue Recording
+                </button>
+                <button
+                  onClick={() => router.back()}
+                  className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-6 transition-all"
+                  style={{ borderRadius: "6px" }}
+                >
+                  Go Back
+                </button>
               </div>
-            )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Thumbs Up Overlay */}
-      {showThumbsUp && (
-        <div className="absolute inset-0 bg-black/30 flex items-center justify-center z-25">
-          <div className="text-center">
-            <ThumbsUp className="w-24 h-24 text-[#2DAD71] mx-auto animate-bounce" fill="currentColor" />
-            <p className="text-white text-xl mt-4">Recording!</p>
+        {/* Permission Denied Overlay */}
+        {permissionDenied && (
+          <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-30">
+            <div
+              className="bg-gray-900 p-8 max-w-sm mx-4 text-center border border-gray-700"
+              style={{ borderRadius: "12px" }}
+            >
+              <div className="mb-6">
+                {recordType === "video" ? (
+                  <Camera className="w-16 h-16 text-red-400 mx-auto mb-4" />
+                ) : (
+                  <MicIcon className="w-16 h-16 text-red-400 mx-auto mb-4" />
+                )}
+                <h3 className="text-xl font-bold text-white mb-2">Camera & Microphone Access</h3>
+                <p className="text-gray-300 text-sm leading-relaxed">
+                  To record your {recordType} response, we need access to your{" "}
+                  {recordType === "video" ? "camera and microphone" : "microphone"}.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <button
+                  onClick={handleAllowAgain}
+                  className="w-full bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-semibold py-3 px-6 rounded-lg transition-all"
+                  style={{ borderRadius: "6px" }}
+                >
+                  Try Again
+                </button>
+                <button
+                  onClick={() => router.back()}
+                  className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition-all"
+                  style={{ borderRadius: "6px" }}
+                >
+                  Go Back
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Preview Generation Overlay */}
-      {showPreviewGeneration && (
-        <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-30">
-          <div className="text-center max-w-sm mx-4">
-            <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-            <h2 className="text-2xl font-bold text-white mb-2">Generating preview...</h2>
-            <p className="text-gray-400 text-sm">This will just take a moment</p>
-          </div>
-        </div>
-      )}
-
-      {/* Recording Text - Shows for first 2 seconds */}
-      {showRecordingText && isRecording && (
-        <div className="absolute top-1/3 inset-x-4 z-20 text-center">
-          <h2 className="text-2xl font-bold text-white mb-2 animate-pulse">Recording...</h2>
-        </div>
-      )}
-
-      {/* Remaining Time Display - Above record button during recording */}
-      {isRecording && (
-        <div className="absolute bottom-36 left-1/2 transform -translate-x-1/2 z-20">
-          <span
-            className={`text-white text-sm font-mono ${getRemainingTime() <= 10 ? "animate-pulse text-red-400" : ""}`}
-          >
-            {formatTime(getRemainingTime())}
-          </span>
-        </div>
-      )}
-
-      {/* Video Preview or Audio Visualization */}
-      <div className="relative w-full h-screen">
-        {recordType === "video" ? (
-          <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
-            <div className="text-center w-full px-8">
-              {/* Audio Waveform Visualization - Only show during recording */}
-              {isRecording && (
-                <div className="mb-8">
-                  <AudioWaveform state="recording" />
+        {/* Enhanced Countdown Overlay */}
+        {countdown !== 0 && (
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-25">
+            <div className="text-center">
+              {countdown === -1 ? (
+                // "Getting ready for recording" phase
+                <div className="animate-pulse">
+                  <p className="text-white text-2xl font-light mb-4">Getting ready for recording</p>
+                  <div className="flex justify-center space-x-1">
+                    <div
+                      className="w-2 h-2 bg-white rounded-full animate-bounce"
+                      style={{ animationDelay: "0ms" }}
+                    ></div>
+                    <div
+                      className="w-2 h-2 bg-white rounded-full animate-bounce"
+                      style={{ animationDelay: "150ms" }}
+                    ></div>
+                    <div
+                      className="w-2 h-2 bg-white rounded-full animate-bounce"
+                      style={{ animationDelay: "300ms" }}
+                    ></div>
+                  </div>
                 </div>
-              )}
-              {/* Show static waveform after recording stops */}
-              {!isRecording && recordedBlob && (
-                <div className="mb-8">
-                  <AudioWaveform state="idle" />
+              ) : (
+                // Countdown numbers phase
+                <div>
+                  <div
+                    className="text-8xl font-bold text-white mb-4 transition-all duration-300 animate-pulse"
+                    style={{
+                      textShadow: "0 0 20px rgba(255, 255, 255, 0.5)",
+                      transform: countdown === 1 ? "scale(1.1)" : "scale(1)",
+                    }}
+                  >
+                    {countdown}
+                  </div>
+                  <p className="text-white text-xl font-light">Get ready...</p>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Recording Controls */}
-        {!permissionDenied && !storageError && (
-          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20">
-            <div className="flex flex-col items-center">
-              {isRecording ? (
-                <div className="flex flex-col items-center">
-                  <div className="relative">
-                    {/* Progress Ring */}
-                    <svg className="w-20 h-20 absolute inset-0 -rotate-90" viewBox="0 0 80 80">
-                      <circle
-                        cx="40"
-                        cy="40"
-                        r="36"
-                        stroke="white"
-                        strokeWidth="2"
-                        fill="none"
-                        strokeDasharray={`${(recordingTime / MAX_RECORDING_TIME) * 226.2} 226.2`}
-                        className="transition-all duration-1000"
-                      />
-                    </svg>
-                    {/* Record Button with enhanced pulsing */}
-                    <button
-                      onClick={stopRecording}
-                      className="w-16 h-16 bg-[#DC2626] rounded-full flex items-center justify-center relative z-10 mx-2 my-2"
-                      style={{
-                        animation: "recording-pulse 1.5s ease-in-out infinite",
-                        boxShadow: "0 0 20px rgba(220, 38, 38, 0.6)",
-                      }}
-                    >
-                      <Square className="w-6 h-6 text-white" fill="white" />
-                    </button>
-                  </div>
-                  <p className="text-white text-xs mt-2" style={{ fontSize: "10px" }}>
-                    Finish
-                  </p>
-                </div>
-              ) : readyToRecord ? (
-                <div className="flex flex-col items-center">
-                  {/* Start recording text */}
-                  <p className="text-white text-sm mb-4 font-light">Start recording...</p>
-
-                  <div className="relative w-20 h-20 flex items-center justify-center">
-                    {/* Ready to record button with enhanced pulsing when countdown is active */}
-                    <button
-                      onClick={startCountdown}
-                      className={`w-16 h-16 bg-[#DC2626] rounded-full flex items-center justify-center transition-all ${
-                        countdown !== 0 ? "animate-pulse scale-110" : "hover:scale-105"
-                      }`}
-                      style={{
-                        boxShadow:
-                          countdown !== 0 ? "0 0 25px rgba(220, 38, 38, 0.8)" : "0 0 15px rgba(220, 38, 38, 0.4)",
-                      }}
-                    >
-                      <div className="w-4 h-4 bg-white rounded-full" />
-                    </button>
-                  </div>
-                  {/* Add same spacing as recording state */}
-                  <p className="text-white text-xs mt-2 opacity-0" style={{ fontSize: "10px" }}>
-                    Ready
-                  </p>
-                </div>
-              ) : null}
+        {/* Thumbs Up Overlay */}
+        {showThumbsUp && (
+          <div className="absolute inset-0 bg-black/30 flex items-center justify-center z-25">
+            <div className="text-center">
+              <ThumbsUp className="w-24 h-24 text-[#2DAD71] mx-auto animate-bounce" fill="currentColor" />
+              <p className="text-white text-xl mt-4">Recording!</p>
             </div>
           </div>
         )}
+
+        {/* Preview Generation Overlay */}
+        {showPreviewGeneration && (
+          <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-30">
+            <div className="text-center max-w-sm mx-4">
+              <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+              <h2 className="text-2xl font-bold text-white mb-2">Generating preview...</h2>
+              <p className="text-gray-400 text-sm">This will just take a moment</p>
+            </div>
+          </div>
+        )}
+
+        {/* Recording Text - Shows for first 2 seconds */}
+        {showRecordingText && isRecording && (
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 text-center">
+            <h2 className="text-4xl font-bold text-white mb-2 animate-pulse">Recording...</h2>
+          </div>
+        )}
+
+        {/* Get Ready Text - Shows during countdown */}
+        {countdown > 0 && (
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 text-center">
+            <div
+              className="text-6xl font-bold text-white animate-pulse"
+              style={{
+                textShadow: "0 0 20px rgba(255, 255, 255, 0.5)",
+              }}
+            >
+              {countdown}
+            </div>
+          </div>
+        )}
+
+        {/* Video Preview or Audio Visualization */}
+        <div className="relative w-full h-screen">
+          {recordType === "video" ? (
+            <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+              <div className="text-center w-full px-8">
+                {/* Audio Waveform Visualization - Only show during recording */}
+                {isRecording && (
+                  <div className="mb-12 px-4">
+                    <AudioWaveform state="recording" />
+                  </div>
+                )}
+                {/* Show static waveform after recording stops */}
+                {!isRecording && recordedBlob && (
+                  <div className="mb-12 px-4">
+                    <AudioWaveform state="idle" />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Recording Controls */}
+          {!permissionDenied && !storageError && (
+            <div className="master-button-container">
+              <div className="flex flex-col items-center">
+                {isRecording ? (
+                  <div className="flex flex-col items-center">
+                    {/* Remaining Time Display - Above record button */}
+                    <span
+                      className={`text-white text-sm font-mono mb-2 ${getRemainingTime() <= 10 ? "animate-pulse text-red-400" : ""}`}
+                    >
+                      {formatTime(getRemainingTime())}
+                    </span>
+
+                    <div className="relative">
+                      {/* Progress Ring */}
+                      <svg className="w-20 h-20 absolute inset-0 -rotate-90" viewBox="0 0 80 80">
+                        <circle
+                          cx="40"
+                          cy="40"
+                          r="36"
+                          stroke="white"
+                          strokeWidth="2"
+                          fill="none"
+                          strokeDasharray={`${(recordingTime / MAX_RECORDING_TIME) * 226.2} 226.2`}
+                          className="transition-all duration-1000"
+                        />
+                      </svg>
+                      {/* Record Button with enhanced pulsing */}
+                      <button
+                        onClick={stopRecording}
+                        className="glass-button-circular glass-button-red mx-2 my-2"
+                        style={{
+                          animation: "recording-pulse 1.5s ease-in-out infinite",
+                        }}
+                      >
+                        <Square className="w-6 h-6 text-white" fill="white" />
+                      </button>
+                    </div>
+                    <p className="text-white text-xs mt-2" style={{ fontSize: "10px" }}>
+                      Finish
+                    </p>
+                  </div>
+                ) : readyToRecord ? (
+                  <div className="flex flex-col items-center">
+                    {/* Start recording text */}
+                    <p className="text-white text-base mb-4 font-light">Start recording...</p>
+
+                    <div className="relative w-20 h-20 flex items-center justify-center">
+                      {/* Ready to record button */}
+                      <button
+                        onClick={startCountdown}
+                        className={`glass-button-circular glass-button-red ${countdown > 0 ? "" : "hover:scale-105"}`}
+                        style={{
+                          animation: countdown > 0 ? `countdown-pulse-trigger 0.6s ease-in-out` : "none",
+                          animationIterationCount: 1,
+                        }}
+                        key={buttonPulseKey}
+                      >
+                        {/* No content - full blurry red */}
+                      </button>
+                    </div>
+                    {/* Add same spacing as recording state */}
+                    <p className="text-white text-xs mt-2 opacity-0" style={{ fontSize: "10px" }}>
+                      Ready
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }

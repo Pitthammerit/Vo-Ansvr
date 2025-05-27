@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Play, Video, Mic, Type } from "lucide-react"
+import { TopNavButton } from "@/components/TopNavButton"
 
 export default function CampaignPage() {
   const params = useParams()
@@ -15,6 +16,8 @@ export default function CampaignPage() {
   const [showThumbnail, setShowThumbnail] = useState(false)
   const [videoLoaded, setVideoLoaded] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
+
+  const campaignId = params.campaignId as string
 
   // Welcome video ID from Cloudflare
   const welcomeVideoId = "80c576b4fdece39a6c8abddc1aa2f7bc"
@@ -112,7 +115,9 @@ export default function CampaignPage() {
   }
 
   const handleResponseType = (type: "video" | "audio" | "text") => {
-    router.push(`/c/${params.campaignId}/auth?type=${type}`)
+    // Always require authentication for all campaigns (including demo)
+    console.log("🔐 Requiring authentication for campaign:", campaignId)
+    router.push(`/c/${campaignId}/auth?type=${type}`)
   }
 
   // Show play button when:
@@ -129,6 +134,9 @@ export default function CampaignPage() {
           ANS/R<span className="text-red-500">.</span>
         </div>
       </div>
+
+      {/* Top Right Navigation Button */}
+      <TopNavButton />
 
       {/* Video Container */}
       <div className="relative w-full h-screen">
@@ -168,18 +176,17 @@ export default function CampaignPage() {
         )}
 
         {/* Response Text */}
-        <div className="absolute bottom-28 inset-x-4 z-20 text-center">
-          <p className="text-white text-lg font-medium">How would you like to respond?</p>
+        <div className="absolute bottom-[164px] inset-x-4 z-20 text-center">
+          <p className="master-text-above-buttons">How would you like to respond?</p>
         </div>
 
         {/* Response Buttons */}
-        <div className="absolute bottom-8 inset-x-4 z-20">
+        <div className="master-button-container">
           <div className="flex justify-center items-center gap-4 max-w-md mx-auto">
             {/* Audio Button */}
             <button
               onClick={() => handleResponseType("audio")}
-              className="bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 transition-all"
-              style={{ width: "64px", height: "64px", borderRadius: "6px" }}
+              className="glass-button-response-small"
               aria-label="Respond with audio"
             >
               <Mic className="w-4 h-4" strokeWidth={1.5} />
@@ -189,8 +196,7 @@ export default function CampaignPage() {
             {/* Video Button - Bigger */}
             <button
               onClick={() => handleResponseType("video")}
-              className="bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 transition-all shadow-lg ring-2 ring-white/20"
-              style={{ width: "76px", height: "76px", borderRadius: "6px" }}
+              className="glass-button-response-large"
               aria-label="Respond with video"
             >
               <Video className="w-5 h-5" strokeWidth={1.5} />
@@ -200,8 +206,7 @@ export default function CampaignPage() {
             {/* Text Button */}
             <button
               onClick={() => handleResponseType("text")}
-              className="bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 transition-all"
-              style={{ width: "64px", height: "64px", borderRadius: "6px" }}
+              className="glass-button-response-small"
               aria-label="Respond with text"
             >
               <Type className="w-4 h-4" strokeWidth={1.5} />
