@@ -200,7 +200,7 @@ export default function ProfilePage() {
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-2">
-              <button onClick={() => router.back()} className="text-white hover:text-gray-300">
+              <button onClick={() => router.push("/dashboard")} className="text-white hover:text-gray-300">
                 <ArrowLeft className="w-6 h-6" />
               </button>
               <h1 className="text-3xl font-bold text-white">Profile Settings</h1>
