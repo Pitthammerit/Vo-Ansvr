@@ -56,21 +56,39 @@ export default function ProfilePage() {
     setError("")
     setSuccess("")
 
+    // Add debugging
+    console.log("🔍 Profile Update Debug:", {
+      name,
+      email,
+      avatarPreview,
+      user: user?.id,
+      timestamp: new Date().toISOString(),
+    })
+
     try {
-      const { error } = await updateProfile({
+      const updateData = {
         name,
         email,
         avatar_url: avatarPreview,
-      })
+      }
+
+      console.log("📤 Sending update data:", updateData)
+
+      const { error } = await updateProfile(updateData)
+
+      console.log("📥 Update response:", { error })
 
       if (error) {
+        console.error("❌ Profile update error:", error)
         setError(error.message)
       } else {
+        console.log("✅ Profile update successful")
         setSuccess("Profile updated successfully!")
         // Clear success message after 3 seconds
         setTimeout(() => setSuccess(""), 3000)
       }
     } catch (err) {
+      console.error("❌ Unexpected error:", err)
       setError("An unexpected error occurred. Please try again.")
     } finally {
       setLoading(false)
@@ -116,24 +134,40 @@ export default function ProfilePage() {
   }
 
   const handleAvatarSave = async (imageData: string) => {
+    console.log("🖼️ Avatar Save Debug:", {
+      imageDataLength: imageData.length,
+      imageDataPreview: imageData.substring(0, 50) + "...",
+      currentName: name,
+      currentEmail: email,
+    })
+
     setAvatarPreview(imageData)
     setShowProfileEditor(false)
 
     // Auto-save the avatar
     try {
-      const { error } = await updateProfile({
+      const updateData = {
         name,
         email,
         avatar_url: imageData,
-      })
+      }
+
+      console.log("📤 Auto-saving avatar with data:", updateData)
+
+      const { error } = await updateProfile(updateData)
+
+      console.log("📥 Avatar save response:", { error })
 
       if (error) {
+        console.error("❌ Avatar save error:", error)
         setError("Failed to save profile picture")
       } else {
+        console.log("✅ Avatar saved successfully")
         setSuccess("Profile picture updated!")
         setTimeout(() => setSuccess(""), 3000)
       }
     } catch (err) {
+      console.error("❌ Avatar save unexpected error:", err)
       setError("Failed to save profile picture")
     }
   }
