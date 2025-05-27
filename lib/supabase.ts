@@ -19,34 +19,58 @@ export function getSupabaseClient(): SupabaseClient {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_URL is not set")
+    const error = "NEXT_PUBLIC_SUPABASE_URL is not set. Please check your environment variables."
+    logger.error(error)
+    throw new Error(error)
   }
 
   if (!supabaseAnonKey) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY is not set")
+    const error = "NEXT_PUBLIC_SUPABASE_ANON_KEY is not set. Please check your environment variables."
+    logger.error(error)
+    throw new Error(error)
+  }
+
+  // Validate URL format
+  try {
+    new URL(supabaseUrl)
+  } catch {
+    const error = "NEXT_PUBLIC_SUPABASE_URL is not a valid URL"
+    logger.error(error)
+    throw new Error(error)
   }
 
   logger.info("Creating new Supabase client instance...")
 
-  // Create instance with proper session persistence
-  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      storage: typeof window !== "undefined" ? window.localStorage : undefined,
-      storageKey: "ansvr.auth.token",
-      flowType: "pkce",
-    },
-    global: {
-      headers: {
-        "X-Client-Info": "ansvr-web-app",
+  try {
+    // Create instance with proper session persistence and error handling
+    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: typeof window !== "undefined" ? window.localStorage : undefined,
+        storageKey: "ansvr.auth.token",
+        flowType: "pkce",
       },
-    },
-  })
+      global: {
+        headers: {
+          "X-Client-Info": "ansvr-web-app",
+        },
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 10,
+        },
+      },
+    })
 
-  logger.info("✅ Supabase client created successfully")
-  return supabaseInstance
+    logger.info("✅ Supabase client created successfully")
+    return supabaseInstance
+  } catch (error) {
+    const errorMessage = `Failed to create Supabase client: ${error instanceof Error ? error.message : "Unknown error"}`
+    logger.error(errorMessage)
+    throw new Error(errorMessage)
+  }
 }
 
 // Synchronous version for immediate access

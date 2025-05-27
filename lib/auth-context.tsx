@@ -46,23 +46,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        // Get the singleton Supabase client
-        const supabase = getSupabaseClient()
+        console.log("🔄 Initializing auth...")
+
+        // Get the singleton Supabase client with retry logic
+        let supabase
+        let retryCount = 0
+        const maxRetries = 3
+
+        while (retryCount < maxRetries) {
+          try {
+            supabase = getSupabaseClient()
+            break
+          } catch (clientError) {
+            retryCount++
+            console.warn(`⚠️ Supabase client creation attempt ${retryCount} failed:`, clientError)
+            if (retryCount >= maxRetries) {
+              throw new Error(
+                `Failed to create Supabase client after ${maxRetries} attempts: ${clientError instanceof Error ? clientError.message : "Unknown error"}`,
+              )
+            }
+            // Wait before retry
+            await new Promise((resolve) => setTimeout(resolve, 1000 * retryCount))
+          }
+        }
+
+        if (!supabase) {
+          throw new Error("Failed to initialize Supabase client")
+        }
+
         console.log("✅ Got Supabase client")
 
-        // Get initial session
-        const { data, error } = await supabase.auth.getSession()
+        // Get initial session with timeout
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Session check timeout")), 10000),
+        )
+
+        const { data, error } = (await Promise.race([sessionPromise, timeoutPromise])) as any
 
         console.log("📋 Initial session check:", {
-          hasSession: !!data.session,
+          hasSession: !!data?.session,
           error: error?.message,
-          user: data.session?.user?.email,
+          user: data?.session?.user?.email,
         })
 
         if (mounted) {
           if (error) {
             console.error("❌ Session error:", error)
-            setError(`Session error: ${error.message}`)
+            // Don't set error for session_not_found as it's normal for logged out users
+            if (!error.message.includes("session_not_found")) {
+              setError(`Session error: ${error.message}`)
+            }
           } else {
             setSession(data.session)
             setUser(data.session?.user ?? null)
@@ -90,7 +124,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         console.error("❌ Failed to initialize auth:", err)
         if (mounted) {
-          setError(`Failed to initialize auth: ${err instanceof Error ? err.message : "Unknown error"}`)
+          const errorMessage = err instanceof Error ? err.message : "Unknown initialization error"
+          setError(`Failed to initialize authentication: ${errorMessage}`)
           setLoading(false)
         }
       }
@@ -154,20 +189,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       console.log("🔑 Signing in user:", email)
+
+      // Check if we have a valid Supabase client
       const supabase = getSupabaseClient()
+      if (!supabase) {
+        throw new Error("Supabase client not available")
+      }
+
+      // Test connection first
+      const { data: healthCheck } = await supabase.from("campaigns").select("count").limit(1).maybeSingle()
+      console.log("🏥 Connection test:", healthCheck ? "✅ Connected" : "⚠️ Limited connectivity")
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      if (error) throw error
+      if (error) {
+        console.error("❌ Supabase auth error:", error)
+
+        // Handle specific error types
+        if (error.message.includes("Invalid login credentials")) {
+          throw new Error("Invalid email or password. Please check your credentials and try again.")
+        } else if (error.message.includes("Email not confirmed")) {
+          throw new Error("Please verify your email before logging in. Check your inbox for a verification link.")
+        } else if (error.message.includes("Too many requests")) {
+          throw new Error("Too many login attempts. Please wait a moment and try again.")
+        } else if (error.message.includes("Network")) {
+          throw new Error("Network connection issue. Please check your internet connection and try again.")
+        } else {
+          throw new Error(`Login failed: ${error.message}`)
+        }
+      }
+
+      if (!data.user) {
+        throw new Error("Login failed: No user data received")
+      }
 
       console.log("✅ User signed in successfully")
       return { error: null }
     } catch (error) {
       console.error("❌ Sign in error:", error)
-      return { error }
+
+      // Return a more user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred during login"
+      return {
+        error: {
+          message: errorMessage,
+          originalError: error,
+        },
+      }
     }
   }
 
