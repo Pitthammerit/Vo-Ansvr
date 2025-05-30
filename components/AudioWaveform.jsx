@@ -19,24 +19,21 @@ const AudioWaveform = ({ state = "idle" }) => {
       // Clear canvas
       ctx.clearRect(0, 0, width, height)
 
-      // Set wave properties
-      const baseAmplitude = 50
+      // Set wave properties based on state
+      const baseAmplitude = state === "recording" ? 60 : state === "playing" ? 45 : 20
       const frequency = 0.015
-      const speed = state === "recording" || state === "playing" ? 0.12 : 0
+      const speed = state === "recording" || state === "playing" ? 0.12 : 0.02
 
       // Update time for animation
-      if (speed > 0) {
-        timeRef.current += speed
-      }
+      timeRef.current += speed
 
       // Draw the sine wave with complex variations
       ctx.beginPath()
-      ctx.strokeStyle = "#ef4444"
-      ctx.lineWidth = 3
+      ctx.strokeStyle = state === "recording" ? "#ef4444" : state === "playing" ? "#22c55e" : "#6b7280"
+      ctx.lineWidth = state === "recording" ? 4 : 3
       ctx.lineCap = "round"
 
       for (let x = 0; x <= width; x++) {
-        // Complex sine wave variations with long 30-second cycles
         const time = timeRef.current
 
         // Multiple overlapping sine waves with different periods
@@ -67,10 +64,8 @@ const AudioWaveform = ({ state = "idle" }) => {
 
       ctx.stroke()
 
-      // Continue animation if recording or playing
-      if (state === "recording" || state === "playing") {
-        animationRef.current = requestAnimationFrame(animate)
-      }
+      // Continue animation
+      animationRef.current = requestAnimationFrame(animate)
     }
 
     // Start animation
@@ -85,8 +80,14 @@ const AudioWaveform = ({ state = "idle" }) => {
   }, [state])
 
   return (
-    <div className="w-full bg-black/20 rounded-lg p-4">
-      <canvas ref={canvasRef} width={800} height={120} className="w-full h-auto rounded" />
+    <div className="w-full p-8 md:p-8 p-0">
+      <canvas
+        ref={canvasRef}
+        width={800}
+        height={120}
+        className="w-full h-auto md:rounded rounded-none"
+        style={{ display: "block" }}
+      />
     </div>
   )
 }

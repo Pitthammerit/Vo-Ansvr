@@ -32,21 +32,128 @@ video {
   outline: none;
 }
 
-/* Enhanced recording animation */
+/* Unified Design System */
+
+/* Master button positioning - 80px from bottom (20 * 4px = 80px) */
+.master-button-container {
+  @apply absolute bottom-20 inset-x-4 z-20;
+}
+
+/* Master text styling - matches "Ready to send?" */
+.master-text-above-buttons {
+  @apply text-xl font-bold text-white mb-2;
+}
+
+/* Master text container positioning - 144px from bottom (36 * 4px = 144px) */
+.master-text-container {
+  @apply absolute bottom-36 inset-x-4 z-20 text-center;
+}
+
+/* Unified glass button design */
+.glass-button {
+  @apply backdrop-blur-md transition-all shadow-lg;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Circular glass buttons */
+.glass-button-circular {
+  @apply w-16 h-16 rounded-full flex items-center justify-center glass-button;
+}
+
+/* Green glass button variant */
+.glass-button-green {
+  @apply bg-[#2DAD71]/50 hover:bg-[#2DAD71]/60 border border-[#2DAD71]/20;
+}
+
+/* White glass button variant */
+.glass-button-white {
+  @apply bg-white/50 hover:bg-white/60 border border-white/20;
+}
+
+/* Red glass button variant */
+.glass-button-red {
+  @apply bg-red-600/50 hover:bg-red-600/60 border border-red-600/20;
+}
+
+/* Response type buttons (rectangular with glass effect) */
+.glass-button-response {
+  @apply backdrop-blur-md transition-all border glass-button;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.glass-button-response-small {
+  @apply glass-button-response bg-green-500/50 hover:bg-green-500/60 border-green-400/20 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1;
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+}
+
+.glass-button-response-large {
+  @apply glass-button-response bg-green-500/50 hover:bg-green-500/60 border-green-400/30 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 shadow-lg;
+  width: 76px;
+  height: 76px;
+  border-radius: 6px;
+}
+
+/* Recording specific animations - using separate properties */
 @keyframes recording-pulse {
   0%,
   100% {
-    opacity: 1;
     transform: scale(1);
+    opacity: 1;
   }
   50% {
-    opacity: 0.7;
     transform: scale(1.05);
+    opacity: 0.8;
   }
 }
 
-.recording-pulse {
-  animation: recording-pulse 1.5s ease-in-out infinite;
+.recording-pulse-animation {
+  animation-name: recording-pulse;
+  animation-duration: 2s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: normal;
+  animation-fill-mode: both;
+}
+
+@keyframes countdown-pulse-trigger {
+  0% {
+    transform: scale(1);
+    background-color: rgba(220, 38, 38, 0.5);
+  }
+  20% {
+    transform: scale(1.15);
+    background-color: rgba(220, 38, 38, 1);
+  }
+  40% {
+    transform: scale(1);
+    background-color: rgba(220, 38, 38, 0.5);
+  }
+  100% {
+    transform: scale(1);
+    background-color: rgba(220, 38, 38, 0.5);
+  }
+}
+
+.countdown-pulse-animation {
+  animation-name: countdown-pulse-trigger;
+  animation-duration: 1s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: 1;
+  animation-direction: normal;
+  animation-fill-mode: forwards;
+}
+
+.countdown-pulse-trigger-animation {
+  animation-name: countdown-pulse-trigger;
+  animation-duration: 0.6s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: 1;
+  animation-direction: normal;
+  animation-fill-mode: forwards;
 }
 
 /* Countdown text glow effect */
@@ -60,14 +167,13 @@ video {
   }
 }
 
-/* Button hover and active states */
-.record-button-ready {
-  transition: all 0.3s ease;
-}
-
-.record-button-ready:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 20px rgba(220, 38, 38, 0.6);
+.countdown-glow-animation {
+  animation-name: countdown-glow;
+  animation-duration: 1s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-fill-mode: both;
 }
 
 /* Progress circle animation */
@@ -80,6 +186,16 @@ video {
   }
 }
 
+.progress-circle-animation {
+  animation-name: progress-circle;
+  animation-duration: var(--duration);
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+  animation-direction: normal;
+  animation-fill-mode: forwards;
+}
+
+/* Remove the old shorthand animation class */
 .progress-circle {
-  animation: progress-circle var(--duration) linear forwards;
+  /* Use .progress-circle-animation instead */
 }

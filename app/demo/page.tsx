@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Plus, Video } from "lucide-react"
+import { Plus, Video, User, LayoutDashboard } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { useAuth } from "@/lib/auth-context"
 
 // Mock data for demo
 const mockConversations = [
@@ -48,9 +49,48 @@ const mockConversations = [
 
 export default function DemoPage() {
   const [conversations] = useState(mockConversations)
+  const [mounted, setMounted] = useState(false)
+  const { user, isDemo } = useAuth()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Top-right navigation button */}
+      <div className="fixed top-4 right-4 z-40">
+        {user || isDemo ? (
+          <Link href="/dashboard">
+            <Button
+              size="sm"
+              className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30 transition-all duration-200 p-0"
+              variant="ghost"
+            >
+              <LayoutDashboard className="h-4 w-4 text-gray-700" />
+            </Button>
+          </Link>
+        ) : (
+          <Link href="/auth/login">
+            <Button
+              size="sm"
+              className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30 transition-all duration-200 p-0"
+              variant="ghost"
+            >
+              <User className="h-4 w-4 text-gray-700" />
+            </Button>
+          </Link>
+        )}
+      </div>
+
       <div className="max-w-4xl mx-auto p-4">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">ANSWR Lite - Demo</h1>
