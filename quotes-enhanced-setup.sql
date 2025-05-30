@@ -34,7 +34,7 @@ INSERT INTO quotes (quote_text, quote_author, quote_category) VALUES
 ('The present moment is filled with joy and happiness. If you are attentive, you will see it.', 'Thich Nhat Hanh', 'consciousness'),
 ('When stillness descends, the observer awakens, and you return to your true self.', 'Benjamin Kurtz', 'consciousness'),
 ('Move slowly, and you''ll navigate life''s path with greater clarity and purpose.', 'Benjamin Kurtz', 'consciousness'),
-('Energy and consciousness are one; our human journey is to remember and return home.', 'Benjamin Kurtz', 'consciousness');
+('Energy and consciousness are one; our human journey is to remember that and return home.', 'Benjamin Kurtz', 'consciousness');
 
 -- Create policy for quotes
 DROP POLICY IF EXISTS "Allow read access to quotes" ON quotes;
