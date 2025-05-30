@@ -31,32 +31,49 @@ export default function FinalPage() {
 
   useEffect(() => {
     const initializeQuotes = async () => {
-      // If we have a preloaded service, get the current quote immediately
-      if (typeof window !== "undefined" && window.preloadedQuoteService) {
-        const initialQuote = quoteService.getCurrentQuote()
-        if (initialQuote) {
-          setCurrentQuote(initialQuote)
-          return // Exit early, quotes are already loaded
+      try {
+        // If we have a preloaded service, get the current quote immediately
+        if (typeof window !== "undefined" && window.preloadedQuoteService) {
+          console.log("✅ Using preloaded quote service")
+          const initialQuote = quoteService.getCurrentQuote()
+          if (initialQuote) {
+            setCurrentQuote(initialQuote)
+            return // Exit early, quotes are already loaded
+          }
         }
-      }
 
-      // Fallback: fetch quotes if not preloaded
-      console.log("🔄 Fetching quotes on final page...")
-      await quoteService.fetchQuotes()
-      const initialQuote = quoteService.getCurrentQuote()
-      if (initialQuote) {
-        setCurrentQuote(initialQuote)
+        // Fallback: fetch quotes if not preloaded
+        console.log("🔄 Fetching quotes on final page...")
+        try {
+          await quoteService.fetchQuotes()
+          const initialQuote = quoteService.getCurrentQuote()
+          if (initialQuote) {
+            setCurrentQuote(initialQuote)
+          } else {
+            console.log("ℹ️ No quotes available, continuing without quotes")
+          }
+        } catch (quoteError) {
+          console.warn("⚠️ Failed to fetch quotes, continuing without quotes:", quoteError)
+          // Don't throw error, just continue without quotes
+        }
+      } catch (error) {
+        console.error("❌ Error initializing quotes:", error)
+        // Don't throw error, just continue without quotes
       }
     }
 
     initializeQuotes()
 
     return () => {
-      // Clean up the global reference
-      if (typeof window !== "undefined" && window.preloadedQuoteService) {
-        delete window.preloadedQuoteService
+      try {
+        // Clean up the global reference
+        if (typeof window !== "undefined" && window.preloadedQuoteService) {
+          delete window.preloadedQuoteService
+        }
+        quoteService.cleanup()
+      } catch (cleanupError) {
+        console.warn("⚠️ Error during cleanup:", cleanupError)
       }
-      quoteService.cleanup()
     }
   }, [quoteService])
 
@@ -103,11 +120,20 @@ export default function FinalPage() {
         )}
 
         {/* Quote Section */}
-        {currentQuote && (
+        {currentQuote ? (
           <div className="bg-gray-900/50 p-6 border border-gray-700" style={{ borderRadius: "12px" }}>
             <div className="space-y-3">
               <p className="text-gray-300 text-lg italic leading-relaxed">"{currentQuote.text}"</p>
               <p className="text-gray-400 text-sm">— {currentQuote.author}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-gray-900/50 p-6 border border-gray-700" style={{ borderRadius: "12px" }}>
+            <div className="space-y-3">
+              <p className="text-gray-300 text-lg italic leading-relaxed">
+                "Success is not final, failure is not fatal: it is the courage to continue that counts."
+              </p>
+              <p className="text-gray-400 text-sm">— Winston Churchill</p>
             </div>
           </div>
         )}
