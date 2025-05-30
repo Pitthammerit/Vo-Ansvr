@@ -75,7 +75,7 @@ export default function ThanksPage() {
 
         {/* Action Buttons - Using master design system */}
         <div className="master-button-container">
-          <div className="flex justify-center gap-10 max-w-sm mx-auto">
+          <div className="flex justify-center gap-8 max-w-sm mx-auto">
             <button onClick={handleSendAnother} className="glass-button-circular glass-button-green">
               <span className="text-white font-bold text-lg">Yes</span>
             </button>
