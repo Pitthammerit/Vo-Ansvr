@@ -70,8 +70,8 @@ const config: Config = {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
-        // Our custom button color for testing
-        "button-red": "var(--color-button-red)",
+        // Define the button-red color directly with the hex value
+        "button-red": "#ff69b4",
       },
       borderRadius: {
         lg: "var(--radius)",
