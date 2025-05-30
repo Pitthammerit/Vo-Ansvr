@@ -84,14 +84,14 @@ video {
 }
 
 .glass-button-response-small {
-  @apply glass-button-response bg-green-500/50 hover:bg-green-500/60 border-green-400/20 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1;
+  @apply glass-button-response bg-[#2DAD71]/50 hover:bg-[#2DAD71]/60 border-[#2DAD71]/20 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1;
   width: 64px;
   height: 64px;
   border-radius: 6px;
 }
 
 .glass-button-response-large {
-  @apply glass-button-response bg-green-500/50 hover:bg-green-500/60 border-green-400/30 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 shadow-lg;
+  @apply glass-button-response bg-[#2DAD71]/50 hover:bg-[#2DAD71]/60 border-[#2DAD71]/20 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 shadow-lg;
   width: 76px;
   height: 76px;
   border-radius: 6px;
