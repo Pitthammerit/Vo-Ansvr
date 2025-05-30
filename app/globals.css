@@ -83,6 +83,7 @@ video {
   -webkit-backdrop-filter: blur(8px);
 }
 
+/* Welcome screen rectangular response button - Audio/Text options (64x64px) */
 .glass-button-response-small {
   @apply glass-button-response bg-[#2DAD71]/50 hover:bg-[#2DAD71]/60 border-[#2DAD71]/20 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1;
   width: 64px;
@@ -90,6 +91,7 @@ video {
   border-radius: 6px;
 }
 
+/* Welcome screen rectangular response button - Video option (76x76px) */
 .glass-button-response-large {
   @apply glass-button-response bg-[#2DAD71]/50 hover:bg-[#2DAD71]/60 border-[#2DAD71]/20 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 shadow-lg;
   width: 76px;
