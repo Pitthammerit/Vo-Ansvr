@@ -39,12 +39,13 @@ export function SimpleAuthProvider({ children }: { children: React.ReactNode }) 
     console.log("🔍 Environment check:", {
       hasUrl: !!supabaseUrl,
       hasKey: !!supabaseKey,
-      url: supabaseUrl,
+      url: supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : "N/A", // Truncate URL for logging
       keyLength: supabaseKey?.length,
     })
 
     if (!supabaseUrl || !supabaseKey) {
-      setError("Missing Supabase environment variables")
+      const missingVar = !supabaseUrl ? "NEXT_PUBLIC_SUPABASE_URL" : "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+      setError(`Missing Supabase environment variable: ${missingVar}. Please ensure it is set.`)
       setLoading(false)
       return
     }
@@ -72,7 +73,7 @@ export function SimpleAuthProvider({ children }: { children: React.ReactNode }) 
           })
 
           if (error) {
-            console.error("❌ Session error:", error)
+            console.error("❌ Session error during initial check:", error)
             setError(`Session error: ${error.message}`)
           } else {
             setSession(data.session)
@@ -82,7 +83,7 @@ export function SimpleAuthProvider({ children }: { children: React.ReactNode }) 
           setLoading(false)
         })
         .catch((err) => {
-          console.error("❌ Session check failed:", err)
+          console.error("❌ Session check failed during initial fetch:", err)
           setError(`Session check failed: ${err.message}`)
           setLoading(false)
         })
@@ -104,14 +105,19 @@ export function SimpleAuthProvider({ children }: { children: React.ReactNode }) 
       }
     } catch (err) {
       console.error("❌ Failed to create Supabase client:", err)
-      setError(`Failed to create Supabase client: ${err instanceof Error ? err.message : "Unknown error"}`)
+      setError(
+        `Failed to create Supabase client: ${err instanceof Error ? err.message : "Unknown error"}. Check console for details.`,
+      )
       setLoading(false)
     }
   }, [])
 
   const signIn = async (email: string, password: string) => {
     if (!supabase) {
-      return { error: { message: "Supabase client not initialized" } }
+      const msg = "Supabase client not initialized for sign-in."
+      console.error(`❌ ${msg}`)
+      setError(msg)
+      return { error: { message: msg } }
     }
 
     try {
@@ -123,30 +129,45 @@ export function SimpleAuthProvider({ children }: { children: React.ReactNode }) 
 
       if (error) {
         console.error("❌ Sign in error:", error)
+        setError(`Sign in failed: ${error.message}`)
         return { error }
       }
 
       console.log("✅ Sign in successful")
+      setError(null)
       return { error: null }
     } catch (err) {
       console.error("❌ Sign in exception:", err)
+      setError(`An unexpected error occurred during sign-in: ${err instanceof Error ? err.message : "Unknown error"}`)
       return { error: { message: err instanceof Error ? err.message : "Unknown error" } }
     }
   }
 
   const signOut = async () => {
-    if (!supabase) return
+    if (!supabase) {
+      const msg = "Sign out failed: Supabase client is not initialized or available."
+      console.error(`❌ ${msg}`)
+      setError(msg)
+      return
+    }
 
     try {
-      console.log("👋 Signing out")
+      console.log("👋 Attempting to sign out...")
       const { error } = await supabase.auth.signOut()
       if (error) {
-        console.error("❌ Sign out error:", error)
+        console.error("❌ Supabase sign out error details:", error)
+        // The "Load failed" error is often a generic network error.
+        // Provide a more specific message if available, otherwise suggest network check.
+        setError(
+          `Sign out failed: ${error.message || "A network error occurred. Please check your connection and try again."}`,
+        )
       } else {
-        console.log("✅ Sign out successful")
+        console.log("✅ Sign out successful.")
+        setError(null) // Clear any previous errors on success
       }
     } catch (err) {
-      console.error("❌ Sign out exception:", err)
+      console.error("❌ An unexpected exception occurred during sign out:", err)
+      setError(`An unexpected error occurred during sign out: ${err instanceof Error ? err.message : "Unknown error"}`)
     }
   }
 
