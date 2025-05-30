@@ -52,6 +52,11 @@ const recordingPulseStyle = `
       background-color: rgba(220, 38, 38, 0.5);
     }
   }
+
+  .countdown-pulse-trigger-animation {
+    animation: countdown-pulse-trigger 0.6s ease-in-out;
+    animation-iteration-count: 1;
+  }
 `
 
 export default function RecordPage() {
@@ -949,11 +954,7 @@ export default function RecordPage() {
                       {/* Ready to record button */}
                       <button
                         onClick={startCountdown}
-                        className={`glass-button-circular glass-button-red ${countdown > 0 ? "" : "hover:scale-105"}`}
-                        style={{
-                          animation: countdown > 0 ? `countdown-pulse-trigger 0.6s ease-in-out` : "none",
-                          animationIterationCount: 1,
-                        }}
+                        className={`glass-button-circular glass-button-red ${countdown > 0 ? "countdown-pulse-trigger-animation" : "hover:scale-105"}`}
                         key={buttonPulseKey}
                       >
                         {/* No content - full blurry red */}
