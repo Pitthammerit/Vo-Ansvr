@@ -1,30 +1,45 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/lib/auth-context"
 
 export default function HomePage() {
   const router = useRouter()
+  const { user, loading } = useAuth()
+  const [mounted, setMounted] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
 
   useEffect(() => {
-    // Simple redirect to demo campaign without database checks
-    // This works better in preview environments
-    const timer = setTimeout(() => {
-      router.push("/c/demo")
-    }, 1000) // Small delay to show the loading screen
+    setMounted(true)
+  }, [])
 
-    return () => clearTimeout(timer)
-  }, [router])
+  useEffect(() => {
+    if (!mounted || loading || redirecting) return
 
-  return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center">
-      <div className="text-center">
-        <div className="text-white font-bold text-2xl mb-4">
-          ANS/R<span className="text-red-500">.</span>
+    setRedirecting(true)
+
+    // Redirect authenticated users to dashboard, others to login
+    if (user) {
+      router.replace("/dashboard")
+    } else {
+      router.replace("/auth/login")
+    }
+  }, [user, loading, mounted, redirecting, router])
+
+  if (!mounted || loading || redirecting) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-white font-bold text-2xl mb-4">
+            ANS/R<span className="text-red-500">.</span>
+          </div>
+          <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white">Loading...</p>
         </div>
-        <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-gray-400">Loading...</p>
       </div>
-    </div>
-  )
+    )
+  }
+
+  return null
 }
