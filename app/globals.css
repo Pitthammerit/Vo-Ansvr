@@ -189,31 +189,22 @@ video {
   }
 }
 
-.recording-pulse-animation {
-  animation-name: recording-pulse;
-  animation-duration: 2s;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-  animation-direction: normal;
-  animation-fill-mode: both;
-}
-
 @keyframes countdown-pulse-trigger {
   0% {
     transform: scale(1);
-    background-color: rgba(220, 38, 38, 0.5);
+    background-color: color-mix(in srgb, var(--color-button-red) 50%, transparent);
   }
   20% {
     transform: scale(1.15);
-    background-color: rgba(220, 38, 38, 1);
+    background-color: var(--color-button-red);
   }
   40% {
     transform: scale(1);
-    background-color: rgba(220, 38, 38, 0.5);
+    background-color: color-mix(in srgb, var(--color-button-red) 50%, transparent);
   }
   100% {
     transform: scale(1);
-    background-color: rgba(220, 38, 38, 0.5);
+    background-color: color-mix(in srgb, var(--color-button-red) 50%, transparent);
   }
 }
 
