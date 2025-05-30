@@ -49,41 +49,41 @@ video {
   @apply absolute bottom-36 inset-x-4 z-20 text-center;
 }
 
-/* Unified glass button design */
+/* Base glass effect for all buttons */
 .glass-button {
   @apply backdrop-blur-md transition-all shadow-lg;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
 
-/* Circular glass buttons */
+/* Circular button - base size and shape */
 .glass-button-circular {
   @apply w-16 h-16 rounded-full flex items-center justify-center glass-button;
 }
 
-/* Green glass button variant */
+/* Circular button - green variant */
 .glass-button-green {
   @apply bg-[#2DAD71]/50 hover:bg-[#2DAD71]/60 border border-[#2DAD71]/20;
 }
 
-/* White glass button variant */
+/* Circular button - white variant */
 .glass-button-white {
   @apply bg-white/50 hover:bg-white/60 border border-white/20;
 }
 
-/* Red glass button variant */
+/* Circular button - red variant */
 .glass-button-red {
   @apply bg-red-600/50 hover:bg-red-600/60 border border-red-600/20;
 }
 
-/* Response type buttons (rectangular with glass effect) */
+/* Rectangular button - base glass effect */
 .glass-button-response {
   @apply backdrop-blur-md transition-all border glass-button;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
 
-/* Welcome screen rectangular response button - Audio/Text options (64x64px) */
+/* Rectangular button - audio/text option - small size (64x64px) */
 .glass-button-response-small {
   @apply glass-button-response bg-[#2DAD71]/50 hover:bg-[#2DAD71]/60 border-[#2DAD71]/20 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1;
   width: 64px;
@@ -91,7 +91,7 @@ video {
   border-radius: 6px;
 }
 
-/* Welcome screen rectangular response button - Video option (76x76px) */
+/* Rectangular button - video option - large size (76x76px) */
 .glass-button-response-large {
   @apply glass-button-response bg-[#2DAD71]/50 hover:bg-[#2DAD71]/60 border-[#2DAD71]/20 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 shadow-lg;
   width: 76px;
