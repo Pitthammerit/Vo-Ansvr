@@ -5,8 +5,19 @@ import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Play, Pause, AlertCircle, Check, X } from "lucide-react"
 import { QuoteService, type Quote } from "@/lib/quote-service"
 import AudioWaveform from "@/components/AudioWaveform"
-import { getSupabaseClient } from "@/lib/supabase" // Import getSupabaseClient
-import { useAuth } from "@/lib/auth-context" // Import useAuth
+import { createClient } from "@supabase/supabase-js"
+
+const getSupabaseClient = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn("⚠️ Supabase environment variables not configured - using demo mode")
+    return null
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey)
+}
 
 // Extend window type for recording data
 declare global {
@@ -25,9 +36,6 @@ export default function ReviewPage() {
   const searchParams = useSearchParams()
   const recordType = searchParams.get("type") as "video" | "audio" | "text"
   const textContent = searchParams.get("content")
-  const questionId = searchParams.get("questionId") // Get questionId from search params
-
-  const { user } = useAuth() // Get the current authenticated user
 
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null)
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
@@ -512,37 +520,6 @@ export default function ReviewPage() {
         throw new Error("No recording data available")
       }
 
-      // --- NEW: Save response to Supabase ---
-      if (!user?.id) {
-        console.error("❌ User not authenticated. Cannot save response to Supabase.")
-        // Decide how to handle this: redirect to login, show error, or proceed without saving
-        // For now, we'll log and proceed to the thanks page without saving to DB
-      } else if (!questionId) {
-        console.error("❌ Question ID is missing. Cannot save response to Supabase.")
-        // Log and proceed without saving to DB
-      } else {
-        const supabase = getSupabaseClient()
-        if (supabase) {
-          console.log("Attempting to save response to Supabase...")
-          const { data, error: dbError } = await supabase.from("responses").insert({
-            question_id: questionId,
-            user_id: user.id, // Link to the authenticated user
-            type: recordType,
-            content: mediaUid, // Store the Cloudflare media ID or text content
-          })
-
-          if (dbError) {
-            console.error("❌ Error saving response to Supabase:", dbError)
-            // You might want to show a user-friendly error here
-          } else {
-            console.log("✅ Response saved to Supabase:", data)
-          }
-        } else {
-          console.error("❌ Supabase client not initialized. Cannot save response.")
-        }
-      }
-      // --- END NEW ---
-
       // Ensure we stay on page for at least 3 seconds (reduced from 5)
       const elapsedTime = Date.now() - (uploadStartTime || Date.now())
       const remainingTime = Math.max(0, 3000 - elapsedTime)
@@ -757,10 +734,42 @@ export default function ReviewPage() {
           )}
         </div>
 
+        {/* Ready to Send Message - Fixed positioning with better spacing */}
+        {/* <div className="absolute bottom-36 inset-x-4 z-20 text-center">
+          <h2 className="text-xl font-bold text-white mb-2 py-2 px-4 inline-block">Ready to send?</h2>
+        </div> */}
+
         {/* Ready to Send Message - Using master design system */}
         <div className="absolute bottom-[154px] inset-x-4 z-20 text-center">
           <h2 className="master-text-above-buttons">Ready to send?</h2>
         </div>
+
+        {/* Smaller Circular Action Buttons */}
+        {/* <div className="absolute bottom-16 inset-x-4 z-20">
+          <div className="flex gap-6 justify-center max-w-sm mx-auto"> */}
+        {/* Yes Button - Smaller Circle */}
+        {/* <button
+              onClick={handleSend}
+              disabled={uploading}
+              className="w-16 h-16 bg-[#2DAD71]/50 backdrop-blur-md hover:bg-[#2DAD71]/60 disabled:bg-gray-600/50 rounded-full flex items-center justify-center transition-all shadow-lg"
+            >
+              {uploading ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : (
+                <Check className="w-6 h-6 text-white" strokeWidth={3} />
+              )}
+            </button> */}
+
+        {/* No Button - Smaller Circle */}
+        {/* <button
+              onClick={handleRetake}
+              disabled={uploading}
+              className="w-16 h-16 bg-white/50 backdrop-blur-md hover:bg-white/60 disabled:bg-gray-600/50 rounded-full flex items-center justify-center transition-all shadow-lg"
+            >
+              <X className="w-6 h-6 text-black" strokeWidth={3} />
+            </button>
+          </div>
+        </div> */}
 
         {/* Action Buttons - Using master design system */}
         <div className="master-button-container">
