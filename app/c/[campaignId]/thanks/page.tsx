@@ -3,7 +3,7 @@
 import { useRef, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { QuoteService } from "@/lib/quote-service"
-import { supabase } from "@/lib/supabase"
+import { getSupabaseClient } from "@/lib/supabase"
 
 interface CampaignThankYouData {
   id: string
@@ -31,6 +31,7 @@ export default function ThanksPage() {
         setLoading(true)
         setError(null)
 
+        const supabase = getSupabaseClient()
         const { data, error: supabaseError } = await supabase
           .from("campaigns")
           .select("id, external_title, thank_you_type, thank_you_video_id, thank_you_message")

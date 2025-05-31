@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Play, Video, Mic, Type } from "lucide-react"
 import { TopNavButton } from "@/components/TopNavButton"
-import { supabase } from "@/lib/supabase"
+import { getSupabaseClient } from "@/lib/supabase"
 
 interface CampaignData {
   id: string
@@ -37,6 +37,7 @@ export default function CampaignPage() {
         setLoading(true)
         setError(null)
 
+        const supabase = getSupabaseClient()
         const { data, error: supabaseError } = await supabase
           .from("campaigns")
           .select("id, external_title, description, welcome_video_id")
