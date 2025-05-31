@@ -404,6 +404,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log("✅ Public.profiles updated successfully")
 
+      // Refresh the profile data in context
+      const { data: updatedProfile, error: fetchError } = await supabase
+        .from("profiles")
+        .select(`
+    id, 
+    created_at,
+    full_name, 
+    avatar_url,
+    updated_at,
+    user_type,
+    use_default_videos,
+    default_welcome_video_id,
+    default_thank_you_video_id,
+    default_thank_you_type,
+    default_thank_you_message
+  `)
+        .eq("id", user.id)
+        .single()
+
+      if (!fetchError && updatedProfile) {
+        setProfile(updatedProfile as UserProfile)
+      }
+
       // If email needs to be updated, it's a separate auth concern
       if (data.email && data.email !== user.email) {
         console.log("📧 Email change detected, attempting to update auth.users.email")
