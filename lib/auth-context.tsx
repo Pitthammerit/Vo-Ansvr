@@ -5,9 +5,18 @@ import { createContext, useContext, useEffect, useState } from "react"
 import type { User, Session } from "@supabase/supabase-js"
 import { getSupabaseClient } from "./supabase"
 
+interface UserProfile {
+  id: string
+  full_name?: string | null // Match your DB schema
+  avatar_url?: string | null // Match your DB schema
+  // Add any other fields from public.profiles you want in the context
+  // e.g., user_type, use_default_videos etc. from your schema visualizer
+}
+
 interface AuthContextType {
   user: User | null
   session: Session | null
+  profile: UserProfile | null // New field for public.profiles data
   loading: boolean
   error: string | null
   signUp: (email: string, password: string, name: string) => Promise<{ error: any; needsEmailVerification?: boolean }>
@@ -34,6 +43,7 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -95,6 +105,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setSession(data.session)
             setUser(data.session?.user ?? null)
             setError(null)
+            if (data.session?.user) {
+              const fetchProfile = async (userId: string) => {
+                try {
+                  const supabase = getSupabaseClient()
+                  const { data: profileData, error: profileError } = await supabase
+                    .from("profiles")
+                    .select("id, full_name, avatar_url") // Adjust select
+                    .eq("id", userId)
+                    .single()
+                  if (profileError) {
+                    console.error("Error fetching initial profile:", profileError)
+                    if (mounted) setProfile(null)
+                  } else {
+                    if (mounted) setProfile(profileData as UserProfile)
+                  }
+                } catch (e) {
+                  console.error("Exception fetching initial profile:", e)
+                  if (mounted) setProfile(null)
+                }
+              }
+              fetchProfile(data.session.user.id)
+            } else {
+              if (mounted) setProfile(null)
+            }
           }
           setLoading(false)
         }
@@ -106,6 +140,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (mounted) {
             setSession(session)
             setUser(session?.user ?? null)
+            if (session?.user) {
+              // Fetch profile data when user is available
+              const fetchProfile = async (userId: string) => {
+                try {
+                  const supabase = getSupabaseClient()
+                  const { data: profileData, error: profileError } = await supabase
+                    .from("profiles")
+                    .select("id, full_name, avatar_url") // Adjust select to match UserProfile and your needs
+                    .eq("id", userId)
+                    .single()
+
+                  if (profileError) {
+                    console.error("Error fetching profile:", profileError)
+                    setProfile(null) // Or handle error appropriately
+                  } else {
+                    setProfile(profileData as UserProfile)
+                  }
+                } catch (e) {
+                  console.error("Exception fetching profile:", e)
+                  setProfile(null)
+                }
+              }
+              fetchProfile(session.user.id)
+            } else {
+              setProfile(null) // Clear profile if no user
+            }
             if (session) {
               setError(null)
             }
@@ -365,6 +425,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = {
     user,
     session,
+    profile, // Add profile here
     loading,
     error,
     signUp,

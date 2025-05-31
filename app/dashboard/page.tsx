@@ -41,7 +41,7 @@ interface UserResponse {
 }
 
 export default function DashboardPage() {
-  const { user, signOut } = useAuth()
+  const { user, profile, signOut } = useAuth()
   const [conversationPreviews, setConversationPreviews] = useState<ConversationPreview[]>([])
   const [stats, setStats] = useState<DashboardStats>({
     totalMessages: 0,
@@ -53,7 +53,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
 
   const personalizedGreeting = useMemo(() => {
-    const firstName = user?.user_metadata?.name?.split(" ")[0] || user?.email?.split("@")[0] || "there"
+    const firstName = profile?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "there"
 
     // Check if user is new (created within last hour)
     const userCreated = user?.created_at ? new Date(user.created_at) : new Date()
@@ -65,7 +65,7 @@ export default function DashboardPage() {
     } else {
       return `Hello, ${firstName}`
     }
-  }, [user])
+  }, [user, profile])
 
   useEffect(() => {
     if (user) {
@@ -204,9 +204,9 @@ export default function DashboardPage() {
                   className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors"
                 >
                   <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
-                    {user?.user_metadata?.avatar_url ? (
+                    {profile?.avatar_url ? (
                       <img
-                        src={user.user_metadata.avatar_url || "/placeholder.svg"}
+                        src={profile.avatar_url || "/placeholder.svg"}
                         alt="Profile"
                         className="w-full h-full object-cover rounded-full"
                       />
@@ -214,7 +214,7 @@ export default function DashboardPage() {
                       <User className="w-4 h-4" />
                     )}
                   </div>
-                  <span className="text-sm">{user?.user_metadata?.name || user?.email}</span>
+                  <span className="text-sm">{profile?.full_name || user?.email}</span>
                 </Link>
                 <button onClick={signOut} className="text-gray-400 hover:text-white transition-colors">
                   <LogOut className="w-5 h-5" />

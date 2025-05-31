@@ -12,9 +12,9 @@ import { ProfilePictureEditor } from "@/components/ProfilePictureEditor"
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { user, updateProfile, updatePassword, loading: authLoading } = useAuth()
+  const { user, profile, updateProfile, updatePassword, loading: authLoading } = useAuth()
 
-  const [name, setName] = useState(user?.user_metadata?.name || "")
+  const [name, setName] = useState(profile?.full_name || "")
   const [email, setEmail] = useState(user?.email || "")
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -29,17 +29,19 @@ export default function ProfilePage() {
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(user?.user_metadata?.avatar_url || null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(profile?.avatar_url || null)
   const [showProfileEditor, setShowProfileEditor] = useState(false)
 
   // Update form when user data changes
   useEffect(() => {
     if (user) {
-      setName(user.user_metadata?.name || "")
       setEmail(user.email || "")
-      setAvatarPreview(user.user_metadata?.avatar_url || null)
     }
-  }, [user])
+    if (profile) {
+      setName(profile.full_name || "")
+      setAvatarPreview(profile.avatar_url || null)
+    }
+  }, [user, profile])
 
   // Clear errors when inputs change
   useEffect(() => {
