@@ -325,8 +325,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       console.log("👤 Updating profile for:", user.email)
+      console.log("📤 Update data:", data)
+
       const supabase = getSupabaseClient()
 
+      // Prepare auth.users update
       const updateData: any = {}
 
       if (data.email && data.email !== user.email) {
@@ -345,11 +348,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updateData.data = metadataUpdates
       }
 
-      const { data: updatedUser, error } = await supabase.auth.updateUser(updateData)
+      // Update auth.users first
+      console.log("📤 Updating auth.users with:", updateData)
+      const { data: updatedUser, error: authError } = await supabase.auth.updateUser(updateData)
 
-      if (error) throw error
+      if (authError) {
+        console.error("❌ Auth update error:", authError)
+        throw authError
+      }
 
-      console.log("✅ Profile updated successfully")
+      console.log("✅ Auth.users updated successfully")
+
+      // Now update public.profiles table
+      const profileUpdates: any = {}
+
+      if (data.name !== undefined) {
+        profileUpdates.full_name = data.name
+      }
+      if (data.avatar_url !== undefined) {
+        profileUpdates.avatar_url = data.avatar_url
+      }
+
+      // Always update the updated_at timestamp
+      profileUpdates.updated_at = new Date().toISOString()
+
+      if (Object.keys(profileUpdates).length > 1) {
+        // More than just updated_at
+        console.log("📤 Updating public.profiles with:", profileUpdates)
+
+        const { error: profileError } = await supabase.from("profiles").update(profileUpdates).eq("id", user.id)
+
+        if (profileError) {
+          console.error("❌ Profile table update error:", profileError)
+          // Don't throw this error, just log it since auth.users was updated successfully
+          console.warn("⚠️ Auth.users updated but profiles table sync failed:", profileError.message)
+        } else {
+          console.log("✅ Public.profiles updated successfully")
+        }
+      }
+
+      console.log("✅ Profile update completed")
       return { error: null }
     } catch (error) {
       console.error("❌ Profile update error:", error)
