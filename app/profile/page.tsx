@@ -40,6 +40,9 @@ export default function ProfilePage() {
     if (profile) {
       setName(profile.full_name || "")
       setAvatarPreview(profile.avatar_url || null)
+    } else {
+      // If profile is not immediately available, try to use the name from the user object
+      setName(user?.full_name || "")
     }
   }, [user, profile])
 
@@ -196,6 +199,19 @@ export default function ProfilePage() {
           >
             🔍 Debug User State
           </button>
+        </div>
+
+        {/* Debug Info - Remove in production */}
+        <div className="max-w-4xl mx-auto px-4 py-2 bg-gray-800 rounded mb-4">
+          <h3 className="text-white font-bold mb-2">Debug Info:</h3>
+          <div className="text-xs text-gray-300 space-y-1">
+            <div>User ID: {user?.id || "No user"}</div>
+            <div>User Email: {user?.email || "No email"}</div>
+            <div>Profile Object: {profile ? JSON.stringify(profile, null, 2) : "No profile"}</div>
+            <div>Auth Loading: {authLoading ? "true" : "false"}</div>
+            <div>Form Name State: {name}</div>
+            <div>Form Email State: {email}</div>
+          </div>
         </div>
 
         {/* Main Content */}
