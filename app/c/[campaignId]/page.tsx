@@ -30,6 +30,9 @@ export default function CampaignPage() {
 
   const campaignId = params.campaignId as string
 
+  // Default fallback video ID (used if database fetch fails)
+  const fallbackWelcomeVideoId = "80c576b4fdece39a6c8abddc1aa2f7bc"
+
   // Fetch campaign data from Supabase
   useEffect(() => {
     const fetchCampaignData = async () => {
@@ -37,29 +40,55 @@ export default function CampaignPage() {
         setLoading(true)
         setError(null)
 
-        const supabase = getSupabaseClient()
-        const { data, error: supabaseError } = await supabase
-          .from("campaigns")
-          .select("id, external_title, description, welcome_video_id")
-          .eq("id", campaignId)
-          .eq("status", "active")
-          .single()
+        console.log("Fetching campaign data for ID:", campaignId)
 
-        if (supabaseError) {
-          console.error("Error fetching campaign:", supabaseError)
-          setError("Campaign not found or not active")
-          return
+        try {
+          const supabase = getSupabaseClient()
+
+          // Log Supabase client status
+          console.log("Supabase client initialized:", !!supabase)
+
+          const { data, error: supabaseError } = await supabase
+            .from("campaigns")
+            .select("id, external_title, description, welcome_video_id")
+            .eq("id", campaignId)
+            .single()
+
+          if (supabaseError) {
+            console.error("Supabase error:", supabaseError)
+            throw new Error(`Supabase error: ${supabaseError.message}`)
+          }
+
+          if (!data) {
+            console.warn("No campaign data returned")
+            throw new Error("Campaign not found")
+          }
+
+          if (!data.welcome_video_id) {
+            console.warn("Campaign has no welcome video ID")
+            throw new Error("No welcome video configured for this campaign")
+          }
+
+          console.log("Campaign data fetched successfully:", data)
+          setCampaignData(data)
+        } catch (supabaseErr) {
+          console.error("Failed to fetch from Supabase:", supabaseErr)
+
+          // Use fallback for demo/testing purposes
+          if (campaignId === "65b2d919-c99b-4306-86d6-601b72ae0c34" || campaignId === "demo") {
+            console.log("Using fallback data for demo campaign")
+            setCampaignData({
+              id: campaignId,
+              external_title: "Demo Campaign",
+              welcome_video_id: fallbackWelcomeVideoId,
+            })
+          } else {
+            throw supabaseErr
+          }
         }
-
-        if (!data.welcome_video_id) {
-          setError("No welcome video configured for this campaign")
-          return
-        }
-
-        setCampaignData(data)
       } catch (err) {
-        console.error("Error loading campaign:", err)
-        setError("Failed to load campaign data")
+        console.error("Error in fetchCampaignData:", err)
+        setError(`Failed to load campaign data: ${err instanceof Error ? err.message : "Unknown error"}`)
       } finally {
         setLoading(false)
       }
@@ -68,19 +97,18 @@ export default function CampaignPage() {
     if (campaignId) {
       fetchCampaignData()
     }
-  }, [campaignId])
+  }, [campaignId, fallbackWelcomeVideoId])
 
-  // Dynamic video URLs based on fetched campaign data
-  const videoUrl = campaignData?.welcome_video_id
-    ? `https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${campaignData.welcome_video_id}/manifest/video.m3u8`
-    : null
-  const posterUrl = campaignData?.welcome_video_id
-    ? `https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${campaignData.welcome_video_id}/thumbnails/thumbnail.jpg?time=0s`
-    : null
+  // Get video ID - either from database or fallback
+  const videoId = campaignData?.welcome_video_id || fallbackWelcomeVideoId
+
+  // Dynamic video URLs based on video ID
+  const videoUrl = `https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${videoId}/manifest/video.m3u8`
+  const posterUrl = `https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${videoId}/thumbnails/thumbnail.jpg?time=0s`
 
   useEffect(() => {
     const video = videoRef.current
-    if (!video || !videoUrl) return
+    if (!video) return
 
     const updateTime = () => setCurrentTime(video.currentTime)
     const updateDuration = () => setDuration(video.duration)
@@ -147,7 +175,7 @@ export default function CampaignPage() {
       video.removeEventListener("play", handlePlay)
       video.removeEventListener("pause", handlePause)
     }
-  }, [hasPlayedPreview, userInitiatedPlay, videoUrl])
+  }, [hasPlayedPreview, userInitiatedPlay])
 
   const handlePlayClick = () => {
     const video = videoRef.current
@@ -186,13 +214,13 @@ export default function CampaignPage() {
     )
   }
 
-  // Show error state
-  if (error || !campaignData) {
+  // Show error state - only if we have an error AND no fallback data
+  if (error && !campaignData) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Campaign Not Found</h1>
-          <p className="text-gray-400 mb-4">{error || "This campaign does not exist or is not active."}</p>
+          <p className="text-gray-400 mb-4">{error}</p>
           <button
             onClick={() => router.push("/dashboard")}
             className="bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white px-6 py-2 rounded-lg"
@@ -225,28 +253,26 @@ export default function CampaignPage() {
       {/* Video Container */}
       <div className="relative w-full h-screen">
         {/* Thumbnail overlay - show when video hasn't loaded or when explicitly showing thumbnail */}
-        {(!videoLoaded || showThumbnail) && posterUrl && (
+        {(!videoLoaded || showThumbnail) && (
           <div
             className="absolute inset-0 z-5 bg-cover bg-center bg-no-repeat"
             style={{ backgroundImage: `url(${posterUrl})` }}
           />
         )}
 
-        {videoUrl && (
-          <video
-            ref={videoRef}
-            className={`w-full h-full object-cover ${!videoLoaded || showThumbnail ? "opacity-0" : "opacity-100"}`}
-            playsInline
-            preload="auto"
-            poster={posterUrl || undefined}
-          >
-            <source src={videoUrl} type="application/x-mpegURL" />
-            <source
-              src={`https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${campaignData.welcome_video_id}/manifest/video.mpd`}
-              type="application/dash+xml"
-            />
-          </video>
-        )}
+        <video
+          ref={videoRef}
+          className={`w-full h-full object-cover ${!videoLoaded || showThumbnail ? "opacity-0" : "opacity-100"}`}
+          playsInline
+          preload="auto"
+          poster={posterUrl}
+        >
+          <source src={videoUrl} type="application/x-mpegURL" />
+          <source
+            src={`https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${videoId}/manifest/video.mpd`}
+            type="application/dash+xml"
+          />
+        </video>
 
         {/* Play Button Overlay */}
         {showPlayButton && (
