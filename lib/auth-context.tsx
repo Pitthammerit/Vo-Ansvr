@@ -118,19 +118,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   const supabase = getSupabaseClient()
                   const { data: profileData, error: profileError } = await supabase
                     .from("profiles")
-                    .select(`
-        id, 
-        created_at,
-        full_name, 
-        avatar_url,
-        updated_at,
-        user_type,
-        use_default_videos,
-        default_welcome_video_id,
-        default_thank_you_video_id,
-        default_thank_you_type,
-        default_thank_you_message
-      `)
+                    .select(
+                      "id, created_at, full_name, avatar_url, updated_at, user_type, use_default_videos, default_welcome_video_id, default_thank_you_video_id, default_thank_you_type, default_thank_you_message",
+                    )
                     .eq("id", userId)
                     .single()
                   if (profileError) {
@@ -166,19 +156,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   const supabase = getSupabaseClient()
                   const { data: profileData, error: profileError } = await supabase
                     .from("profiles")
-                    .select(`
-        id, 
-        created_at,
-        full_name, 
-        avatar_url,
-        updated_at,
-        user_type,
-        use_default_videos,
-        default_welcome_video_id,
-        default_thank_you_video_id,
-        default_thank_you_type,
-        default_thank_you_message
-      `)
+                    .select(
+                      "id, created_at, full_name, avatar_url, updated_at, user_type, use_default_videos, default_welcome_video_id, default_thank_you_video_id, default_thank_you_type, default_thank_you_message",
+                    )
                     .eq("id", userId)
                     .single()
 
@@ -407,19 +387,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Refresh the profile data in context
       const { data: updatedProfile, error: fetchError } = await supabase
         .from("profiles")
-        .select(`
-    id, 
-    created_at,
-    full_name, 
-    avatar_url,
-    updated_at,
-    user_type,
-    use_default_videos,
-    default_welcome_video_id,
-    default_thank_you_video_id,
-    default_thank_you_type,
-    default_thank_you_message
-  `)
+        .select(
+          "id, created_at, full_name, avatar_url, updated_at, user_type, use_default_videos, default_welcome_video_id, default_thank_you_video_id, default_thank_you_type, default_thank_you_message",
+        )
         .eq("id", user.id)
         .single()
 
