@@ -4,19 +4,24 @@ import { useState, useEffect, useMemo } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { AuthGuard } from "@/components/auth-guard"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { LogOut, User, Video, MessageSquare, Settings, Plus, AlertCircle, RefreshCw } from "lucide-react"
+import { LogOut, User, Video, MessageSquare, Plus, AlertCircle, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { AudioResponsePreview } from "@/components/AudioResponsePreview"
 
-interface UserResponse {
-  id: string
-  type: "video" | "audio" | "text"
-  content: string
-  created_at: string
-  campaign_name?: string
-  campaign_id?: string
-  user_id?: string
+interface ConversationPreview {
+  id: string // conversation_id
+  campaignId: string
+  campaignExternalTitle: string
+  lastMessage: {
+    id: string
+    content: string
+    type: "video" | "audio" | "text"
+    createdAt: string
+    senderId: string
+    streamId?: string // if video/audio
+  } | null
+  isUnread: boolean
+  lastMessageAt: string
 }
 
 interface DashboardStats {
@@ -26,9 +31,18 @@ interface DashboardStats {
   textMessages: number
 }
 
+interface UserResponse {
+  id: string
+  content: string
+  type: "video" | "audio" | "text"
+  createdAt: string
+  senderId: string
+  streamId?: string
+}
+
 export default function DashboardPage() {
   const { user, signOut } = useAuth()
-  const [responses, setResponses] = useState<UserResponse[]>([])
+  const [conversationPreviews, setConversationPreviews] = useState<ConversationPreview[]>([])
   const [stats, setStats] = useState<DashboardStats>({
     totalMessages: 0,
     videoMessages: 0,
@@ -66,7 +80,7 @@ export default function DashboardPage() {
     try {
       // Always require real authentication - no demo mode
       if (!user) {
-        setResponses([])
+        setConversationPreviews([])
         setStats({
           totalMessages: 0,
           videoMessages: 0,
@@ -77,9 +91,48 @@ export default function DashboardPage() {
         return
       }
 
-      // TODO: Fetch real user responses from Supabase
-      // For now, show empty state until database tables are set up
-      setResponses([])
+      // Placeholder for Supabase client
+      // const supabase = getSupabaseClient();
+
+      // const { data: conversationsData, error: conversationsError } = await supabase
+      //   .from("conversations")
+      //   .select(`
+      //     id,
+      //     campaign_id,
+      //     campaign:campaigns (external_title),
+      //     messages (id, content, type, created_at, sender_id, read_at)
+      //     // Need to order messages by created_at desc and limit 1 to get the last message
+      //     // This might require a more complex query or view in Supabase
+      //   `)
+      //   .eq("user_id", user.id) // Assuming user_id in conversations is the participant
+      //   .order("last_message_at", { ascending: false });
+
+      // if (conversationsError) throw conversationsError;
+
+      // const formattedConversations: ConversationPreview[] = conversationsData.map(conv => {
+      //   const lastMessage = conv.messages && conv.messages.length > 0 ? conv.messages[0] : null;
+      //   const isUnread = lastMessage ? lastMessage.sender_id !== user.id && !lastMessage.read_at : false;
+      //   return {
+      //     id: conv.id,
+      //     campaignId: conv.campaign_id,
+      //     campaignExternalTitle: conv.campaign?.external_title || "Untitled Campaign",
+      //     lastMessage: lastMessage ? {
+      //       id: lastMessage.id,
+      //       content: lastMessage.content,
+      //       type: lastMessage.type as "video" | "audio" | "text",
+      //       createdAt: lastMessage.created_at,
+      //       senderId: lastMessage.sender_id,
+      //       streamId: (lastMessage.type === 'video' || lastMessage.type === 'audio') ? lastMessage.content : undefined,
+      //     } : null,
+      //     isUnread: isUnread,
+      //     lastMessageAt: lastMessage ? lastMessage.created_at : conv.created_at, // Or use conversations.last_message_at
+      //   };
+      // });
+      // setConversationPreviews(formattedConversations);
+      // calculateStats(formattedConversations.map(c => c.lastMessage).filter(Boolean) as any[]); // Adjust calculateStats if needed
+
+      setConversationPreviews([])
+      // Keep existing stats calculation for now, or set to zero
       setStats({
         totalMessages: 0,
         videoMessages: 0,
@@ -255,51 +308,23 @@ export default function DashboardPage() {
           {/* Quick Actions */}
           <div className="mb-8">
             <h2 className="text-xl font-bold text-white mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Link href="/c/demo">
-                <Card className="bg-gray-900 border-gray-700 hover:bg-gray-800 transition-colors cursor-pointer">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-3">
-                      <Plus className="w-6 h-6 text-[#2DAD71]" />
-                      <div>
-                        <h3 className="font-semibold text-white">Try Demo</h3>
-                        <p className="text-sm text-gray-400">Experience the platform</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-
-              <Link href="/profile">
-                <Card className="bg-gray-900 border-gray-700 hover:bg-gray-800 transition-colors cursor-pointer">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-3">
-                      <Settings className="w-6 h-6 text-[#2DAD71]" />
-                      <div>
-                        <h3 className="font-semibold text-white">Profile Settings</h3>
-                        <p className="text-sm text-gray-400">Update your account information</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
           </div>
 
           {/* Recent Responses */}
           <div>
-            <h2 className="text-xl font-bold text-white mb-4">Recent Responses</h2>
+            <h2 className="text-xl font-bold text-white mb-4">Conversations</h2>
             {loading ? (
               <div className="text-center py-8">
                 <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                 <p className="text-gray-400">Loading responses...</p>
               </div>
-            ) : responses.length === 0 ? (
+            ) : conversationPreviews.length === 0 ? (
               <Card className="bg-gray-900 border-gray-700">
                 <CardContent className="p-8 text-center">
                   <MessageSquare className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-white mb-2">No responses yet</h3>
-                  <p className="text-gray-400 mb-4">Get your first response by sending a message</p>
+                  <h3 className="text-lg font-semibold text-white mb-2">No conversations yet</h3>
+                  <p className="text-gray-400 mb-4">Start your first conversation by responding to a campaign.</p>
                   <Link href="/c/demo">
                     <Button className="bg-[#2DAD71] hover:bg-[#2DAD71]/90">
                       <Plus className="w-4 h-4 mr-2" />
@@ -310,51 +335,39 @@ export default function DashboardPage() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {responses.map((response) => (
-                  <Card key={response.id} className="bg-gray-900 border-gray-700">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          {getResponseIcon(response.type)}
-                          <div>
-                            <h3 className="font-semibold text-white capitalize">{response.type} Response</h3>
-                            <p className="text-sm text-gray-400">{response.campaign_name}</p>
+                {conversationPreviews.map((conversation) => (
+                  <Link
+                    key={conversation.id}
+                    href={`/c/${conversation.campaignId}/messages/${conversation.id}?messageId=${conversation.lastMessage?.id || ""}`}
+                  >
+                    <Card
+                      className={`bg-gray-900 border-gray-700 ${conversation.isUnread ? "opacity-100" : "opacity-50"}`}
+                    >
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {/* {getResponseIcon(response.type)} */}
+                            <div>
+                              <h3 className="font-semibold text-white capitalize">
+                                {conversation.campaignExternalTitle}
+                              </h3>
+                              <p className="text-sm text-gray-400">{conversation.lastMessage?.content}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-gray-400">{formatDate(conversation.lastMessageAt)}</p>
+                            {conversation.lastMessage?.type === "video" && conversation.lastMessage?.streamId && (
+                              <img
+                                src={`https://customer-${process.env.NEXT_PUBLIC_CF_ACCOUNT_ID || "demo"}.cloudflarestream.com/${conversation.lastMessage.streamId}/thumbnail`}
+                                alt="Video thumbnail"
+                                className="w-24 h-16 object-cover rounded-md"
+                              />
+                            )}
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-400">{formatDate(response.created_at)}</p>
-                          {response.campaign_id && (
-                            <Link
-                              href={`/c/${response.campaign_id}/review`}
-                              className="text-xs text-[#2DAD71] hover:text-[#2DAD71]/80"
-                            >
-                              View Details
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-
-                      {response.type === "text" && (
-                        <div className="mt-3 p-3 bg-gray-800 rounded-lg">
-                          <p className="text-gray-300 text-sm line-clamp-3">{response.content}</p>
-                        </div>
-                      )}
-
-                      {response.type === "audio" && (
-                        <div className="mt-3">
-                          <AudioResponsePreview
-                            audioUrl={`https://customer-${process.env.NEXT_PUBLIC_CF_ACCOUNT_ID || "demo"}.cloudflarestream.com/${response.content}/manifest/audio-only.m3u8`}
-                          />
-                        </div>
-                      )}
-
-                      {response.type === "video" && (
-                        <div className="mt-3 aspect-video bg-gray-800 rounded-lg flex items-center justify-center">
-                          <p className="text-gray-400 text-sm">Video preview available in full version</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 ))}
               </div>
             )}
