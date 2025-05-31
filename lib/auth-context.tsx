@@ -5,12 +5,19 @@ import { createContext, useContext, useEffect, useState } from "react"
 import type { User, Session } from "@supabase/supabase-js"
 import { getSupabaseClient } from "./supabase"
 
+// Update the UserProfile interface to match your actual schema
 interface UserProfile {
   id: string
-  full_name?: string | null // Match your DB schema
-  avatar_url?: string | null // Match your DB schema
-  // Add any other fields from public.profiles you want in the context
-  // e.g., user_type, use_default_videos etc. from your schema visualizer
+  created_at: string
+  full_name?: string | null
+  avatar_url?: string | null
+  updated_at: string
+  user_type?: string | null
+  use_default_videos?: boolean | null
+  default_welcome_video_id?: string | null
+  default_thank_you_video_id?: string | null
+  default_thank_you_type?: string | null
+  default_thank_you_message?: string | null
 }
 
 interface AuthContextType {
@@ -111,7 +118,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   const supabase = getSupabaseClient()
                   const { data: profileData, error: profileError } = await supabase
                     .from("profiles")
-                    .select("id, full_name, avatar_url") // Adjust select
+                    .select(`
+        id, 
+        created_at,
+        full_name, 
+        avatar_url,
+        updated_at,
+        user_type,
+        use_default_videos,
+        default_welcome_video_id,
+        default_thank_you_video_id,
+        default_thank_you_type,
+        default_thank_you_message
+      `)
                     .eq("id", userId)
                     .single()
                   if (profileError) {
@@ -147,7 +166,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   const supabase = getSupabaseClient()
                   const { data: profileData, error: profileError } = await supabase
                     .from("profiles")
-                    .select("id, full_name, avatar_url") // Adjust select to match UserProfile and your needs
+                    .select(`
+        id, 
+        created_at,
+        full_name, 
+        avatar_url,
+        updated_at,
+        user_type,
+        use_default_videos,
+        default_welcome_video_id,
+        default_thank_you_video_id,
+        default_thank_you_type,
+        default_thank_you_message
+      `)
                     .eq("id", userId)
                     .single()
 
