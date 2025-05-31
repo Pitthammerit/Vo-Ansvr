@@ -245,12 +245,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       console.log("👋 Signing out user")
-      const supabase = getSupabaseClient()
+
+      // Try to get Supabase client with error handling
+      let supabase
+      try {
+        supabase = getSupabaseClient()
+      } catch (clientError) {
+        console.warn("⚠️ Could not get Supabase client for sign out, clearing local state:", clientError)
+        // Clear local state even if Supabase client fails
+        setUser(null)
+        setSession(null)
+        setError(null)
+        return
+      }
+
+      // Attempt to sign out from Supabase
       const { error } = await supabase.auth.signOut()
-      if (error) throw error
-      console.log("✅ User signed out successfully")
+
+      if (error) {
+        console.warn("⚠️ Supabase sign out error (clearing local state anyway):", error)
+        // Don't throw error, just log it and clear local state
+      } else {
+        console.log("✅ User signed out successfully from Supabase")
+      }
+
+      // Always clear local state regardless of Supabase response
+      setUser(null)
+      setSession(null)
+      setError(null)
     } catch (error) {
-      console.error("❌ Sign out error:", error)
+      console.warn("⚠️ Sign out error (clearing local state anyway):", error)
+      // Don't throw the error, just clear local state
+      setUser(null)
+      setSession(null)
+      setError(null)
     }
   }
 
