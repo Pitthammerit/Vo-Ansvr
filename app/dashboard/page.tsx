@@ -325,7 +325,7 @@ export default function DashboardPage() {
                   <MessageSquare className="w-12 h-12 text-gray-600 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-white mb-2">No conversations yet</h3>
                   <p className="text-gray-400 mb-4">Start your first conversation by responding to a campaign.</p>
-                  <Link href="/c/demo">
+                  <Link href="/c/65b2d919-c99b-4306-86d6-601b72ae0c34">
                     <Button className="bg-[#2DAD71] hover:bg-[#2DAD71]/90">
                       <Plus className="w-4 h-4 mr-2" />
                       Send Your First Message

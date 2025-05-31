@@ -4,6 +4,14 @@ import { useState, useRef, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Play, Video, Mic, Type } from "lucide-react"
 import { TopNavButton } from "@/components/TopNavButton"
+import { supabase } from "@/lib/supabase"
+
+interface CampaignData {
+  id: string
+  external_title: string
+  description?: string
+  welcome_video_id: string
+}
 
 export default function CampaignPage() {
   const params = useParams()
@@ -15,18 +23,63 @@ export default function CampaignPage() {
   const [userInitiatedPlay, setUserInitiatedPlay] = useState(false)
   const [showThumbnail, setShowThumbnail] = useState(false)
   const [videoLoaded, setVideoLoaded] = useState(false)
+  const [campaignData, setCampaignData] = useState<CampaignData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
 
   const campaignId = params.campaignId as string
 
-  // Welcome video ID from Cloudflare
-  const welcomeVideoId = "80c576b4fdece39a6c8abddc1aa2f7bc"
-  const videoUrl = `https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${welcomeVideoId}/manifest/video.m3u8`
-  const posterUrl = `https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${welcomeVideoId}/thumbnails/thumbnail.jpg?time=0s`
+  // Fetch campaign data from Supabase
+  useEffect(() => {
+    const fetchCampaignData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const { data, error: supabaseError } = await supabase
+          .from("campaigns")
+          .select("id, external_title, description, welcome_video_id")
+          .eq("id", campaignId)
+          .eq("status", "active")
+          .single()
+
+        if (supabaseError) {
+          console.error("Error fetching campaign:", supabaseError)
+          setError("Campaign not found or not active")
+          return
+        }
+
+        if (!data.welcome_video_id) {
+          setError("No welcome video configured for this campaign")
+          return
+        }
+
+        setCampaignData(data)
+      } catch (err) {
+        console.error("Error loading campaign:", err)
+        setError("Failed to load campaign data")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (campaignId) {
+      fetchCampaignData()
+    }
+  }, [campaignId])
+
+  // Dynamic video URLs based on fetched campaign data
+  const videoUrl = campaignData?.welcome_video_id
+    ? `https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${campaignData.welcome_video_id}/manifest/video.m3u8`
+    : null
+  const posterUrl = campaignData?.welcome_video_id
+    ? `https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${campaignData.welcome_video_id}/thumbnails/thumbnail.jpg?time=0s`
+    : null
 
   useEffect(() => {
     const video = videoRef.current
-    if (!video) return
+    if (!video || !videoUrl) return
 
     const updateTime = () => setCurrentTime(video.currentTime)
     const updateDuration = () => setDuration(video.duration)
@@ -93,7 +146,7 @@ export default function CampaignPage() {
       video.removeEventListener("play", handlePlay)
       video.removeEventListener("pause", handlePause)
     }
-  }, [hasPlayedPreview, userInitiatedPlay])
+  }, [hasPlayedPreview, userInitiatedPlay, videoUrl])
 
   const handlePlayClick = () => {
     const video = videoRef.current
@@ -120,6 +173,36 @@ export default function CampaignPage() {
     router.push(`/c/${campaignId}/auth?type=${type}`)
   }
 
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading campaign...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error || !campaignData) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Campaign Not Found</h1>
+          <p className="text-gray-400 mb-4">{error || "This campaign does not exist or is not active."}</p>
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white px-6 py-2 rounded-lg"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   // Show play button when:
   // 1. Video is not loaded yet
   // 2. Showing thumbnail (after preview or after full video)
@@ -141,26 +224,28 @@ export default function CampaignPage() {
       {/* Video Container */}
       <div className="relative w-full h-screen">
         {/* Thumbnail overlay - show when video hasn't loaded or when explicitly showing thumbnail */}
-        {(!videoLoaded || showThumbnail) && (
+        {(!videoLoaded || showThumbnail) && posterUrl && (
           <div
             className="absolute inset-0 z-5 bg-cover bg-center bg-no-repeat"
             style={{ backgroundImage: `url(${posterUrl})` }}
           />
         )}
 
-        <video
-          ref={videoRef}
-          className={`w-full h-full object-cover ${!videoLoaded || showThumbnail ? "opacity-0" : "opacity-100"}`}
-          playsInline
-          preload="auto"
-          poster={posterUrl}
-        >
-          <source src={videoUrl} type="application/x-mpegURL" />
-          <source
-            src={`https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${welcomeVideoId}/manifest/video.mpd`}
-            type="application/dash+xml"
-          />
-        </video>
+        {videoUrl && (
+          <video
+            ref={videoRef}
+            className={`w-full h-full object-cover ${!videoLoaded || showThumbnail ? "opacity-0" : "opacity-100"}`}
+            playsInline
+            preload="auto"
+            poster={posterUrl || undefined}
+          >
+            <source src={videoUrl} type="application/x-mpegURL" />
+            <source
+              src={`https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${campaignData.welcome_video_id}/manifest/video.mpd`}
+              type="application/dash+xml"
+            />
+          </video>
+        )}
 
         {/* Play Button Overlay */}
         {showPlayButton && (
