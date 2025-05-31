@@ -47,8 +47,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initializeAuth = async () => {
       try {
         console.log("🔄 Initializing auth...")
-
-        // Get the singleton Supabase client with retry logic
         let supabase
         let retryCount = 0
         const maxRetries = 3
@@ -65,7 +63,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 `Failed to create Supabase client after ${maxRetries} attempts: ${clientError instanceof Error ? clientError.message : "Unknown error"}`,
               )
             }
-            // Wait before retry
             await new Promise((resolve) => setTimeout(resolve, 1000 * retryCount))
           }
         }
@@ -73,10 +70,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!supabase) {
           throw new Error("Failed to initialize Supabase client")
         }
-
         console.log("✅ Got Supabase client")
 
-        // Get initial session with timeout
         const sessionPromise = supabase.auth.getSession()
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error("Session check timeout")), 10000),
@@ -93,7 +88,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (mounted) {
           if (error) {
             console.error("❌ Session error:", error)
-            // Don't set error for session_not_found as it's normal for logged out users
             if (!error.message.includes("session_not_found")) {
               setError(`Session error: ${error.message}`)
             }
@@ -105,12 +99,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false)
         }
 
-        // Set up auth state listener
         const {
           data: { subscription },
         } = supabase.auth.onAuthStateChange((event, session) => {
           console.log("🔄 Auth state changed:", event, session?.user?.email || "No user")
-
           if (mounted) {
             setSession(session)
             setUser(session?.user ?? null)
@@ -119,7 +111,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }
         })
-
         authSubscription = subscription
       } catch (err) {
         console.error("❌ Failed to initialize auth:", err)
@@ -130,9 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     }
-
     initializeAuth()
-
     return () => {
       mounted = false
       if (authSubscription) {
@@ -142,13 +131,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Check if user is admin
   useEffect(() => {
     if (!user) {
       setIsAdmin(false)
       return
     }
-
     const userRole = user.user_metadata?.role
     if (userRole === "admin") {
       setIsAdmin(true)
@@ -162,22 +149,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("📝 Signing up user:", email)
       const supabase = getSupabaseClient()
-
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { name },
+          data: { name }, // This name will be picked up by handle_new_user
         },
       })
-
       if (error) throw error
-
       if (data.user && !data.session) {
         console.log("✅ User signed up, email verification required")
         return { error: null, needsEmailVerification: true }
       }
-
       console.log("✅ User signed up successfully")
       return { error: null, needsEmailVerification: false }
     } catch (error) {
@@ -189,26 +172,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       console.log("🔑 Signing in user:", email)
-
-      // Check if we have a valid Supabase client
       const supabase = getSupabaseClient()
       if (!supabase) {
         throw new Error("Supabase client not available")
       }
-
-      // Test connection first
       const { data: healthCheck } = await supabase.from("campaigns").select("count").limit(1).maybeSingle()
       console.log("🏥 Connection test:", healthCheck ? "✅ Connected" : "⚠️ Limited connectivity")
-
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
-
       if (error) {
         console.error("❌ Supabase auth error:", error)
-
-        // Handle specific error types
         if (error.message.includes("Invalid login credentials")) {
           throw new Error("Invalid email or password. Please check your credentials and try again.")
         } else if (error.message.includes("Email not confirmed")) {
@@ -221,17 +196,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           throw new Error(`Login failed: ${error.message}`)
         }
       }
-
       if (!data.user) {
         throw new Error("Login failed: No user data received")
       }
-
       console.log("✅ User signed in successfully")
       return { error: null }
     } catch (error) {
       console.error("❌ Sign in error:", error)
-
-      // Return a more user-friendly error message
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred during login"
       return {
         error: {
@@ -245,37 +216,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       console.log("👋 Signing out user")
-
-      // Try to get Supabase client with error handling
       let supabase
       try {
         supabase = getSupabaseClient()
       } catch (clientError) {
         console.warn("⚠️ Could not get Supabase client for sign out, clearing local state:", clientError)
-        // Clear local state even if Supabase client fails
         setUser(null)
         setSession(null)
         setError(null)
         return
       }
-
-      // Attempt to sign out from Supabase
       const { error } = await supabase.auth.signOut()
-
       if (error) {
         console.warn("⚠️ Supabase sign out error (clearing local state anyway):", error)
-        // Don't throw error, just log it and clear local state
       } else {
         console.log("✅ User signed out successfully from Supabase")
       }
-
-      // Always clear local state regardless of Supabase response
       setUser(null)
       setSession(null)
       setError(null)
     } catch (error) {
       console.warn("⚠️ Sign out error (clearing local state anyway):", error)
-      // Don't throw the error, just clear local state
       setUser(null)
       setSession(null)
       setError(null)
@@ -286,13 +247,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("🔄 Resetting password for:", email)
       const supabase = getSupabaseClient()
-
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/reset-password`,
       })
-
       if (error) throw error
-
       console.log("✅ Password reset email sent")
       return { error: null }
     } catch (error) {
@@ -305,11 +263,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("🔐 Updating password")
       const supabase = getSupabaseClient()
-
       const { error } = await supabase.auth.updateUser({ password })
-
       if (error) throw error
-
       console.log("✅ Password updated successfully")
       return { error: null }
     } catch (error) {
@@ -318,48 +273,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // --- MODIFIED updateProfile ---
   const updateProfile = async (data: { name?: string; email?: string; avatar_url?: string }) => {
     if (!user) {
       return { error: { message: "Not authenticated" } }
     }
 
     try {
-      console.log("👤 Updating profile for:", user.email)
+      console.log("👤 Updating profile in public.profiles for:", user.email)
       console.log("📤 Update data:", data)
 
       const supabase = getSupabaseClient()
-
-      // Prepare auth.users update
-      const updateData: any = {}
-
-      if (data.email && data.email !== user.email) {
-        updateData.email = data.email
-      }
-
-      const metadataUpdates: any = {}
-      if (data.name !== undefined) {
-        metadataUpdates.name = data.name
-      }
-      if (data.avatar_url !== undefined) {
-        metadataUpdates.avatar_url = data.avatar_url
-      }
-
-      if (Object.keys(metadataUpdates).length > 0) {
-        updateData.data = metadataUpdates
-      }
-
-      // Update auth.users first
-      console.log("📤 Updating auth.users with:", updateData)
-      const { data: updatedUser, error: authError } = await supabase.auth.updateUser(updateData)
-
-      if (authError) {
-        console.error("❌ Auth update error:", authError)
-        throw authError
-      }
-
-      console.log("✅ Auth.users updated successfully")
-
-      // Now update public.profiles table
       const profileUpdates: any = {}
 
       if (data.name !== undefined) {
@@ -368,26 +292,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.avatar_url !== undefined) {
         profileUpdates.avatar_url = data.avatar_url
       }
+      // Note: We are NOT updating email here directly. Email changes should go through supabase.auth.updateUser({ email })
+      // and then a trigger (if desired) could sync it to public.profiles.email.
+      // For now, profile page only updates name and avatar.
 
-      // Always update the updated_at timestamp
-      profileUpdates.updated_at = new Date().toISOString()
-
-      if (Object.keys(profileUpdates).length > 1) {
-        // More than just updated_at
-        console.log("📤 Updating public.profiles with:", profileUpdates)
-
-        const { error: profileError } = await supabase.from("profiles").update(profileUpdates).eq("id", user.id)
-
-        if (profileError) {
-          console.error("❌ Profile table update error:", profileError)
-          // Don't throw this error, just log it since auth.users was updated successfully
-          console.warn("⚠️ Auth.users updated but profiles table sync failed:", profileError.message)
-        } else {
-          console.log("✅ Public.profiles updated successfully")
-        }
+      if (Object.keys(profileUpdates).length === 0) {
+        console.log("🤷 No actual profile data to update in public.profiles")
+        return { error: null } // No changes to make
       }
 
-      console.log("✅ Profile update completed")
+      profileUpdates.updated_at = new Date().toISOString()
+
+      console.log("📤 Updating public.profiles with:", profileUpdates)
+      const { error: profileError } = await supabase.from("profiles").update(profileUpdates).eq("id", user.id)
+
+      if (profileError) {
+        console.error("❌ Profile table update error:", profileError)
+        throw profileError
+      }
+
+      console.log("✅ Public.profiles updated successfully")
+
+      // If email needs to be updated, it's a separate auth concern
+      if (data.email && data.email !== user.email) {
+        console.log("📧 Email change detected, attempting to update auth.users.email")
+        const { error: emailUpdateError } = await supabase.auth.updateUser({ email: data.email })
+        if (emailUpdateError) {
+          console.error("❌ Error updating email in auth.users:", emailUpdateError)
+          // Decide how to handle this: maybe return a partial success or specific error
+          return { error: { message: `Profile updated, but email change failed: ${emailUpdateError.message}` } }
+        }
+        console.log("✅ Email update initiated in auth.users. User will need to confirm.")
+      }
+
       return { error: null }
     } catch (error) {
       console.error("❌ Profile update error:", error)
@@ -398,6 +335,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
   }
+  // --- END MODIFIED updateProfile ---
 
   const retryInitialization = async () => {
     setError(null)
@@ -410,14 +348,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("🔄 Manual session recovery requested")
       const supabase = getSupabaseClient()
       const { data, error } = await supabase.auth.getSession()
-
       if (!error && data.session) {
         setSession(data.session)
         setUser(data.session.user)
         setError(null)
         return { success: true, message: "Session recovered successfully" }
       }
-
       return { success: false, message: error?.message || "No session found" }
     } catch (error) {
       const message = `Session recovery failed: ${error instanceof Error ? error.message : "Unknown error"}`
