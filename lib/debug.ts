@@ -15,7 +15,7 @@ export function createLogger(component: string): Logger {
   const logWithLevel = (level: LogLevel, message: string, ...args: any[]) => {
     const timestamp = new Date().toISOString()
     const prefix = `[${timestamp}] [${level.toUpperCase()}] [${component}]`
-
+    
     switch (level) {
       case "debug":
         console.debug(`${prefix} ${message}`, ...args)
