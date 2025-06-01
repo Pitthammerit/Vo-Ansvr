@@ -10,7 +10,7 @@ export default function BenjaminPage() {
         </div>
 
         <h1 className="text-4xl font-bold text-white mb-4">Building the APP Together</h1>
-        <p className="text-xl text-gray-300">Turning your ideas into reality with clean, efficient code</p>
+        <p className="text-xl text-gray-300">Happy to help</p>
       </div>
     </div>
   )
