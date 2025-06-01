@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
-import { createLogger } from "@/lib/debug"
+import { createLogger } from "./debug"
 
 // Component-specific logger
 const logger = createLogger("Supabase")
