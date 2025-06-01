@@ -9,7 +9,7 @@ export default function BenjaminPage() {
           <Image src="/images/benjamin.png" alt="Benjamin" fill className="rounded-full object-cover" priority />
         </div>
 
-        <h1 className="text-4xl font-bold text-white mb-4">Building the Web Together</h1>
+        <h1 className="text-4xl font-bold text-white mb-4">Building the APP Together</h1>
         <p className="text-xl text-gray-300">Turning your ideas into reality with clean, efficient code</p>
       </div>
     </div>
