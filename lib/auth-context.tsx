@@ -142,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Check if user is admin based on role in database
+  // Check if user is admin based on user_type in profiles table
   useEffect(() => {
     if (!user) {
       setIsAdmin(false)
@@ -153,16 +153,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const supabase = getSupabaseClient()
 
-        // Query the users table for role information
-        // Adjust this query based on your actual database schema
-        const { data, error } = await supabase.from("users").select("role").eq("id", user.id).single()
+        // Query the profiles table for user_type
+        const { data, error } = await supabase.from("profiles").select("user_type").eq("id", user.id).single()
 
         if (error) {
           console.error("❌ Error fetching user role:", error)
           return
         }
 
-        const userRole = data?.role
+        const userRole = data?.user_type
         const isAdminUser = userRole === "admin"
 
         console.log("👤 Admin check:", {
@@ -287,8 +286,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Clear any auth tokens from localStorage
       if (typeof window !== "undefined") {
-        localStorage.removeItem("ansvr.auth.token")
-        localStorage.removeItem("supabase.auth.token")
+        try {
+          localStorage.removeItem("sb-yxskpbwikpoyagexkbro-auth-token")
+          localStorage.removeItem("supabase.auth.token")
+          localStorage.removeItem("ansvr.auth.token")
+
+          // Clear all Supabase-related items
+          Object.keys(localStorage).forEach((key) => {
+            if (key.includes("supabase") || key.includes("sb-")) {
+              localStorage.removeItem(key)
+            }
+          })
+
+          console.log("✅ Local storage cleared")
+        } catch (storageError) {
+          console.error("❌ Error clearing local storage:", storageError)
+        }
       }
 
       console.log("✅ Local session cleared")
