@@ -5,6 +5,20 @@ import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Play, Pause, AlertCircle, Check, X } from "lucide-react"
 import { QuoteService, type Quote } from "@/lib/quote-service"
 import AudioWaveform from "@/components/AudioWaveform"
+import { useAuth } from "@/lib/auth-context"
+import { getSupabaseClient } from "@/lib/supabase"
+
+// const getSupabaseClient = () => {
+//   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+//   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+//   if (!supabaseUrl || !supabaseAnonKey) {
+//     console.warn("⚠️ Supabase environment variables not configured - using demo mode")
+//     return null
+//   }
+
+//   return createClient(supabaseUrl, supabaseAnonKey)
+// }
 
 // Extend window type for recording data
 declare global {
@@ -38,6 +52,9 @@ export default function ReviewPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const [uploadStartTime, setUploadStartTime] = useState<number | null>(null)
+
+  const { user } = useAuth()
+  const supabase = getSupabaseClient()
 
   // Initialize quotes on component mount
   useEffect(() => {
@@ -456,53 +473,155 @@ export default function ReviewPage() {
 
   const handleSend = async () => {
     try {
+      // Stop media playback (existing logic)
+      if (recordType === "video" && videoRef.current && !videoRef.current.paused) {
+        videoRef.current.pause()
+        setIsPlaying(false)
+      }
+      if (recordType === "audio" && audioRef.current && !audioRef.current.paused) {
+        audioRef.current.pause()
+        setIsPlaying(false)
+      }
+
       setUploading(true)
       setUploadProgress(0)
       setQuoteChangeCount(0)
       setUploadStartTime(Date.now())
-      console.log("🚀 Starting upload process...")
+      console.log("🚀 Starting submission process...")
 
-      let mediaUid = ""
-
-      if (recordType === "text") {
-        mediaUid = textContent || ""
-        console.log("📝 Text message, skipping upload")
-      } else if (recordedBlob) {
-        // Validate blob before upload
-        if (!recordedBlob || recordedBlob.size === 0) {
-          throw new Error("No valid recording data available")
-        }
-
-        console.log("📊 Starting media upload...")
-
-        try {
-          // Upload to Cloudflare Stream
-          mediaUid = await uploadToCloudflare(recordedBlob)
-          console.log("✅ Upload completed with ID:", mediaUid)
-        } catch (uploadError) {
-          console.error("❌ Upload failed:", uploadError)
-
-          // Show user-friendly error message
-          const errorMessage = uploadError instanceof Error ? uploadError.message : "Upload failed"
-
-          // For now, continue with demo flow even on error
-          console.log("🎭 Continuing with demo flow despite upload error")
-          mediaUid = "demo-video-upload-error-" + Date.now()
-        }
-      } else {
-        throw new Error("No recording data available")
+      if (!user) {
+        console.error("❌ User not authenticated. Cannot save message.")
+        // Optionally, redirect to login or show an error message to the user
+        // For now, we'll proceed to thanks page with a demo/error ID
+        router.push(`/c/${params.campaignId}/thanks?mediaId=error-no-user&type=${recordType}`)
+        return
       }
 
-      // Ensure we stay on page for at least 3 seconds (reduced from 5)
+      let mediaUid = ""
+      if (recordType === "text") {
+        mediaUid = textContent || ""
+        console.log("📝 Text message, content:", mediaUid)
+      } else if (recordedBlob) {
+        if (!recordedBlob || recordedBlob.size === 0) {
+          throw new Error("No valid recording data available for upload.")
+        }
+        console.log("📊 Starting media upload to Cloudflare...")
+        mediaUid = await uploadToCloudflare(recordedBlob) // Existing function
+        console.log("✅ Cloudflare Upload completed with ID:", mediaUid)
+      } else {
+        throw new Error("No recording data or text content available to send.")
+      }
+
+      // --- Supabase Interaction Starts ---
+      console.log("🔄 Interacting with Supabase...")
+
+      // 1. Fetch Campaign's admin_id (optional, but good for conversation linking)
+      let campaignAdminId = null
+      try {
+        const { data: campaignData, error: campaignFetchError } = await supabase
+          .from("campaigns")
+          .select("admin_id")
+          .eq("id", params.campaignId as string)
+          .single()
+
+        if (campaignFetchError) {
+          console.warn("⚠️ Could not fetch campaign admin_id:", campaignFetchError.message)
+          // Continue without admin_id if not critical, or handle error
+        } else if (campaignData) {
+          campaignAdminId = campaignData.admin_id
+          console.log("🧑‍💼 Campaign admin_id:", campaignAdminId)
+        }
+      } catch (e) {
+        console.warn("⚠️ Error fetching campaign details:", e)
+      }
+
+      // 2. Find or Create Conversation
+      let conversationId = null
+      console.log(`🔍 Looking for existing conversation for campaign ${params.campaignId} and user ${user.id}`)
+      const { data: existingConversation, error: convSearchError } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("campaign_id", params.campaignId as string)
+        .eq("user_id", user.id)
+        // .eq('admin_id', campaignAdminId) // Only if admin_id is strictly required for matching
+        .maybeSingle()
+
+      if (convSearchError) {
+        console.error("❌ Error searching for conversation:", convSearchError.message)
+        throw new Error(`Failed to search for conversation: ${convSearchError.message}`)
+      }
+
+      if (existingConversation) {
+        conversationId = existingConversation.id
+        console.log("✅ Found existing conversation:", conversationId)
+      } else {
+        console.log("💬 No existing conversation found, creating new one...")
+        const { data: newConversation, error: newConvError } = await supabase
+          .from("conversations")
+          .insert({
+            campaign_id: params.campaignId as string,
+            user_id: user.id,
+            admin_id: campaignAdminId, // This can be null if campaign has no admin or not fetched
+            status: "active", // Or 'pending' based on your logic
+            last_message_at: new Date().toISOString(), // Set initial last_message_at
+          })
+          .select("id")
+          .single()
+
+        if (newConvError) {
+          console.error("❌ Error creating new conversation:", newConvError.message)
+          throw new Error(`Failed to create conversation: ${newConvError.message}`)
+        }
+        conversationId = newConversation!.id
+        console.log("✅ New conversation created:", conversationId)
+      }
+
+      // 3. Save Message
+      console.log("✉️ Saving message to Supabase...")
+      const { error: messageError } = await supabase.from("messages").insert({
+        conversation_id: conversationId,
+        sender_id: user.id,
+        sender_type: "user", // Assuming sender is always 'user' from this flow
+        message_type: recordType as "video" | "audio" | "text",
+        content: mediaUid, // Cloudflare ID for media, or text content
+        status: "sent",
+        // parent_message_id: null, // Set if it's a reply
+        // response_required: true, // Set based on your logic
+      })
+
+      if (messageError) {
+        console.error("❌ Error saving message:", messageError.message)
+        throw new Error(`Failed to save message: ${messageError.message}`)
+      }
+      console.log("✅ Message saved successfully to conversation:", conversationId)
+
+      // 4. Update Conversation's last_message_at (if not handled by a trigger)
+      // This is important if you sort conversations by recent activity.
+      // If you created a new conversation above, last_message_at was already set.
+      // This is for updating an existing conversation.
+      if (existingConversation) {
+        console.log("🔄 Updating conversation last_message_at timestamp...")
+        const { error: updateConvError } = await supabase
+          .from("conversations")
+          .update({ last_message_at: new Date().toISOString() })
+          .eq("id", conversationId)
+        if (updateConvError) {
+          console.warn("⚠️ Error updating conversation timestamp:", updateConvError.message)
+        } else {
+          console.log("✅ Conversation timestamp updated.")
+        }
+      }
+      // --- Supabase Interaction Ends ---
+
+      // Ensure we stay on page for at least 3 seconds (existing logic)
       const elapsedTime = Date.now() - (uploadStartTime || Date.now())
       const remainingTime = Math.max(0, 3000 - elapsedTime)
-
       if (remainingTime > 0) {
-        console.log(`⏳ Waiting ${remainingTime}ms more for minimum upload time`)
+        console.log(`⏳ Waiting ${remainingTime}ms more for minimum upload display time`)
         await new Promise((resolve) => setTimeout(resolve, remainingTime))
       }
 
-      // Clean up blob URL and global data
+      // Clean up blob URL and global data (existing logic)
       if (recordedUrl && recordedUrl.startsWith("blob:")) {
         URL.revokeObjectURL(recordedUrl)
       }
@@ -510,15 +629,19 @@ export default function ReviewPage() {
         delete window.recordingData
       }
 
-      console.log("✅ Process completed, navigating to thanks page...")
-      router.push(`/c/${params.campaignId}/thanks?mediaId=${mediaUid}&type=${recordType}`)
+      console.log("✅ Submission process completed, navigating to thanks page...")
+      router.push(`/c/${params.campaignId}/thanks?mediaId=${mediaUid}&type=${recordType}&convId=${conversationId}`)
     } catch (error) {
       console.error("💥 Critical error in handleSend:", error)
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred."
+      setMediaError(`Submission failed: ${errorMessage}`) // Show error to user on review page
 
-      // Even on critical error, try to continue the flow
-      const fallbackMediaId = "demo-critical-error-" + recordType + "-" + Date.now()
-      console.log("🆘 Using critical error fallback, navigating anyway...")
-      router.push(`/c/${params.campaignId}/thanks?mediaId=${fallbackMediaId}&type=${recordType}`)
+      // Fallback navigation even on critical error
+      const fallbackMediaId = "error-" + recordType + "-" + Date.now()
+      console.log("🆘 Using critical error fallback, navigating to thanks page with error info...")
+      // Consider not navigating or navigating to an error page if submission truly fails.
+      // For now, maintaining previous behavior of navigating to thanks page.
+      router.push(`/c/${params.campaignId}/thanks?mediaId=${fallbackMediaId}&type=${recordType}&error=true`)
     } finally {
       setUploading(false)
       setUploadProgress(0)
@@ -541,7 +664,7 @@ export default function ReviewPage() {
 
       {/* Upload Progress Overlay */}
       {uploading && (
-        <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-30">
+        <div className="absolute inset-0 bg-black flex items-center justify-center z-30">
           <div className="text-center max-w-lg mx-4 px-6">
             <h2 className="text-xl font-bold text-white mb-6">Your message is uploading...</h2>
 
@@ -650,13 +773,13 @@ export default function ReviewPage() {
             </div>
           ) : recordType === "audio" && recordedUrl ? (
             <div className="relative h-full">
-              {/* Simple dark background for audio */}
-              <div className="absolute inset-0 bg-gradient-to-b from-gray-900 to-black"></div>
-
-              {/* Audio Waveform Visualization */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-full max-w-4xl px-8">
-                  <AudioWaveform state={isPlaying ? "playing" : "preview"} />
+              {/* Same background as recording page */}
+              <div className="w-full h-full bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+                <div className="text-center w-full px-8">
+                  {/* Audio Waveform Visualization - Same as recording page */}
+                  <div className="mb-12 px-4">
+                    <AudioWaveform state={isPlaying ? "playing" : "idle"} />
+                  </div>
                 </div>
               </div>
 
@@ -708,18 +831,50 @@ export default function ReviewPage() {
         </div>
 
         {/* Ready to Send Message - Fixed positioning with better spacing */}
-        <div className="absolute bottom-32 inset-x-4 z-20 text-center">
+        {/* <div className="absolute bottom-36 inset-x-4 z-20 text-center">
           <h2 className="text-xl font-bold text-white mb-2 py-2 px-4 inline-block">Ready to send?</h2>
+        </div> */}
+
+        {/* Ready to Send Message - Using master design system */}
+        <div className="absolute bottom-[154px] inset-x-4 z-20 text-center">
+          <h2 className="master-text-above-buttons">Ready to send?</h2>
         </div>
 
         {/* Smaller Circular Action Buttons */}
-        <div className="absolute bottom-8 inset-x-4 z-20">
+        {/* <div className="absolute bottom-16 inset-x-4 z-20">
+          <div className="flex gap-6 justify-center max-w-sm mx-auto"> */}
+        {/* Yes Button - Smaller Circle */}
+        {/* <button
+              onClick={handleSend}
+              disabled={uploading}
+              className="w-16 h-16 bg-[#2DAD71]/50 backdrop-blur-md hover:bg-[#2DAD71]/60 disabled:bg-gray-600/50 rounded-full flex items-center justify-center transition-all shadow-lg"
+            >
+              {uploading ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : (
+                <Check className="w-6 h-6 text-white" strokeWidth={3} />
+              )}
+            </button> */}
+
+        {/* No Button - Smaller Circle */}
+        {/* <button
+              onClick={handleRetake}
+              disabled={uploading}
+              className="w-16 h-16 bg-white/50 backdrop-blur-md hover:bg-white/60 disabled:bg-gray-600/50 rounded-full flex items-center justify-center transition-all shadow-lg"
+            >
+              <X className="w-6 h-6 text-black" strokeWidth={3} />
+            </button>
+          </div>
+        </div> */}
+
+        {/* Action Buttons - Using master design system */}
+        <div className="master-button-container">
           <div className="flex gap-6 justify-center max-w-sm mx-auto">
-            {/* Yes Button - Smaller Circle */}
+            {/* Yes Button */}
             <button
               onClick={handleSend}
               disabled={uploading}
-              className="w-16 h-16 bg-[#2DAD71] hover:bg-[#2DAD71]/90 disabled:bg-gray-600 rounded-full flex items-center justify-center transition-all shadow-lg"
+              className="glass-button-circular glass-button-green disabled:bg-gray-600/50"
             >
               {uploading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
@@ -728,11 +883,11 @@ export default function ReviewPage() {
               )}
             </button>
 
-            {/* No Button - Smaller Circle */}
+            {/* No Button */}
             <button
               onClick={handleRetake}
               disabled={uploading}
-              className="w-16 h-16 bg-white hover:bg-gray-200 disabled:bg-gray-600 rounded-full flex items-center justify-center transition-all shadow-lg"
+              className="glass-button-circular glass-button-white disabled:bg-gray-600/50"
             >
               <X className="w-6 h-6 text-black" strokeWidth={3} />
             </button>

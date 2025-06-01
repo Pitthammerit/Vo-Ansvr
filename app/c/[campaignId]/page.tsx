@@ -3,6 +3,15 @@
 import { useState, useRef, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Play, Video, Mic, Type } from "lucide-react"
+import { TopNavButton } from "@/components/TopNavButton"
+import { getSupabaseClient } from "@/lib/supabase"
+
+interface CampaignData {
+  id: string
+  external_title: string
+  description?: string
+  welcome_video_id: string
+}
 
 export default function CampaignPage() {
   const params = useParams()
@@ -14,12 +23,88 @@ export default function CampaignPage() {
   const [userInitiatedPlay, setUserInitiatedPlay] = useState(false)
   const [showThumbnail, setShowThumbnail] = useState(false)
   const [videoLoaded, setVideoLoaded] = useState(false)
+  const [campaignData, setCampaignData] = useState<CampaignData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
 
-  // Welcome video ID from Cloudflare
-  const welcomeVideoId = "80c576b4fdece39a6c8abddc1aa2f7bc"
-  const videoUrl = `https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${welcomeVideoId}/manifest/video.m3u8`
-  const posterUrl = `https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${welcomeVideoId}/thumbnails/thumbnail.jpg?time=0s`
+  const campaignId = params.campaignId as string
+
+  // Default fallback video ID (used if database fetch fails)
+  const fallbackWelcomeVideoId = "80c576b4fdece39a6c8abddc1aa2f7bc"
+
+  // Fetch campaign data from Supabase
+  useEffect(() => {
+    const fetchCampaignData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        console.log("Fetching campaign data for ID:", campaignId)
+
+        try {
+          const supabase = getSupabaseClient()
+
+          // Log Supabase client status
+          console.log("Supabase client initialized:", !!supabase)
+
+          const { data, error: supabaseError } = await supabase
+            .from("campaigns")
+            .select("id, external_title, description, welcome_video_id")
+            .eq("id", campaignId)
+            .single()
+
+          if (supabaseError) {
+            console.error("Supabase error:", supabaseError)
+            throw new Error(`Supabase error: ${supabaseError.message}`)
+          }
+
+          if (!data) {
+            console.warn("No campaign data returned")
+            throw new Error("Campaign not found")
+          }
+
+          if (!data.welcome_video_id) {
+            console.warn("Campaign has no welcome video ID")
+            throw new Error("No welcome video configured for this campaign")
+          }
+
+          console.log("Campaign data fetched successfully:", data)
+          setCampaignData(data)
+        } catch (supabaseErr) {
+          console.error("Failed to fetch from Supabase:", supabaseErr)
+
+          // Use fallback for demo/testing purposes
+          if (campaignId === "65b2d919-c99b-4306-86d6-601b72ae0c34" || campaignId === "demo") {
+            console.log("Using fallback data for demo campaign")
+            setCampaignData({
+              id: campaignId,
+              external_title: "Demo Campaign",
+              welcome_video_id: fallbackWelcomeVideoId,
+            })
+          } else {
+            throw supabaseErr
+          }
+        }
+      } catch (err) {
+        console.error("Error in fetchCampaignData:", err)
+        setError(`Failed to load campaign data: ${err instanceof Error ? err.message : "Unknown error"}`)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (campaignId) {
+      fetchCampaignData()
+    }
+  }, [campaignId, fallbackWelcomeVideoId])
+
+  // Get video ID - either from database or fallback
+  const videoId = campaignData?.welcome_video_id || fallbackWelcomeVideoId
+
+  // Dynamic video URLs based on video ID
+  const videoUrl = `https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${videoId}/manifest/video.m3u8`
+  const posterUrl = `https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${videoId}/thumbnails/thumbnail.jpg?time=0s`
 
   useEffect(() => {
     const video = videoRef.current
@@ -112,7 +197,39 @@ export default function CampaignPage() {
   }
 
   const handleResponseType = (type: "video" | "audio" | "text") => {
-    router.push(`/c/${params.campaignId}/auth?type=${type}`)
+    // Always require authentication for all campaigns (including demo)
+    console.log("🔐 Requiring authentication for campaign:", campaignId)
+    router.push(`/c/${campaignId}/auth?type=${type}`)
+  }
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading campaign...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state - only if we have an error AND no fallback data
+  if (error && !campaignData) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Campaign Not Found</h1>
+          <p className="text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white px-6 py-2 rounded-lg"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    )
   }
 
   // Show play button when:
@@ -129,6 +246,9 @@ export default function CampaignPage() {
           ANS/R<span className="text-red-500">.</span>
         </div>
       </div>
+
+      {/* Top Right Navigation Button */}
+      <TopNavButton />
 
       {/* Video Container */}
       <div className="relative w-full h-screen">
@@ -149,7 +269,7 @@ export default function CampaignPage() {
         >
           <source src={videoUrl} type="application/x-mpegURL" />
           <source
-            src={`https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${welcomeVideoId}/manifest/video.mpd`}
+            src={`https://customer-55uc1p5i8i1uuc09.cloudflarestream.com/${videoId}/manifest/video.mpd`}
             type="application/dash+xml"
           />
         </video>
@@ -168,18 +288,17 @@ export default function CampaignPage() {
         )}
 
         {/* Response Text */}
-        <div className="absolute bottom-28 inset-x-4 z-20 text-center">
-          <p className="text-white text-lg font-medium">How would you like to respond?</p>
+        <div className="absolute bottom-[164px] inset-x-4 z-20 text-center">
+          <p className="master-text-above-buttons">How would you like to respond?</p>
         </div>
 
         {/* Response Buttons */}
-        <div className="absolute bottom-8 inset-x-4 z-20">
+        <div className="master-button-container">
           <div className="flex justify-center items-center gap-4 max-w-md mx-auto">
             {/* Audio Button */}
             <button
               onClick={() => handleResponseType("audio")}
-              className="bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 transition-all"
-              style={{ width: "64px", height: "64px", borderRadius: "6px" }}
+              className="glass-button-response-small"
               aria-label="Respond with audio"
             >
               <Mic className="w-4 h-4" strokeWidth={1.5} />
@@ -189,8 +308,7 @@ export default function CampaignPage() {
             {/* Video Button - Bigger */}
             <button
               onClick={() => handleResponseType("video")}
-              className="bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 transition-all shadow-lg ring-2 ring-white/20"
-              style={{ width: "76px", height: "76px", borderRadius: "6px" }}
+              className="glass-button-response-large"
               aria-label="Respond with video"
             >
               <Video className="w-5 h-5" strokeWidth={1.5} />
@@ -200,8 +318,7 @@ export default function CampaignPage() {
             {/* Text Button */}
             <button
               onClick={() => handleResponseType("text")}
-              className="bg-[#2DAD71] hover:bg-[#2DAD71]/90 text-white font-medium rounded-md flex flex-col items-center justify-center gap-1 transition-all"
-              style={{ width: "64px", height: "64px", borderRadius: "6px" }}
+              className="glass-button-response-small"
               aria-label="Respond with text"
             >
               <Type className="w-4 h-4" strokeWidth={1.5} />
