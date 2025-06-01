@@ -142,24 +142,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Check if user is admin based on role metadata
+  // Check if user is admin based on role in database
   useEffect(() => {
     if (!user) {
       setIsAdmin(false)
       return
     }
 
-    // Check for admin role in user metadata or app metadata
-    const userRole = user.user_metadata?.role || user.app_metadata?.role
-    const isAdminUser = userRole === "admin"
+    const fetchUserRole = async () => {
+      try {
+        const supabase = getSupabaseClient()
 
-    console.log("👤 Admin check:", {
-      email: user.email,
-      userRole,
-      isAdmin: isAdminUser,
-    })
+        // Query the users table for role information
+        // Adjust this query based on your actual database schema
+        const { data, error } = await supabase.from("users").select("role").eq("id", user.id).single()
 
-    setIsAdmin(isAdminUser)
+        if (error) {
+          console.error("❌ Error fetching user role:", error)
+          return
+        }
+
+        const userRole = data?.role
+        const isAdminUser = userRole === "admin"
+
+        console.log("👤 Admin check:", {
+          email: user.email,
+          userRole,
+          isAdmin: isAdminUser,
+        })
+
+        setIsAdmin(isAdminUser)
+      } catch (error) {
+        console.error("❌ Failed to fetch user role:", error)
+      }
+    }
+
+    fetchUserRole()
   }, [user])
 
   const signUp = async (email: string, password: string, name: string) => {
@@ -267,6 +285,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null)
       setIsAdmin(false)
 
+      // Clear any auth tokens from localStorage
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("ansvr.auth.token")
+        localStorage.removeItem("supabase.auth.token")
+      }
+
+      console.log("✅ Local session cleared")
+
       // Force redirect to home page
       window.location.href = "/"
     } catch (error) {
@@ -275,6 +301,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null)
       setSession(null)
       setIsAdmin(false)
+
+      // Force redirect anyway
+      window.location.href = "/"
     }
   }
 
