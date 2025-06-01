@@ -250,11 +250,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("👋 Signing out user")
       const supabase = getSupabaseClient()
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
-      console.log("✅ User signed out successfully")
+
+      try {
+        // Try the remote signout first
+        const { error } = await supabase.auth.signOut()
+        if (error) throw error
+        console.log("✅ User signed out successfully from Supabase")
+      } catch (remoteError) {
+        // If remote signout fails (e.g., due to CORS in sandbox), log it but continue with local cleanup
+        console.warn("⚠️ Remote sign out failed, proceeding with local cleanup:", remoteError)
+        console.log("This is expected in sandbox environments due to CORS restrictions")
+      }
+
+      // Always perform local state cleanup regardless of remote signout success
+      setUser(null)
+      setSession(null)
+      setIsAdmin(false)
+
+      // Force redirect to home page
+      window.location.href = "/"
     } catch (error) {
       console.error("❌ Sign out error:", error)
+      // Still attempt local cleanup
+      setUser(null)
+      setSession(null)
+      setIsAdmin(false)
     }
   }
 
