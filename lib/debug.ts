@@ -38,7 +38,6 @@ class DebugManager {
         console.log("🔧 Debug logs will be visible. Use ansvr_debug.disable() to turn off.")
       } else {
         console.log("🔧 Use ansvr_debug.enable() or add ?debug=true to URL to enable debug logs.")
-        console.log("🔧 Or run: ansvr_debug.enable('ansvr2024')")
       }
     }
   }
@@ -84,7 +83,6 @@ class DebugManager {
     // More comprehensive developer conditions
     const isDeveloper =
       info.isLocalhost ||
-      info.isDevDomain ||
       info.hasDebugFlag ||
       info.hasDevFlag ||
       info.isDevPort ||
@@ -97,15 +95,16 @@ class DebugManager {
       info.fullUrl.includes("localhost") ||
       info.fullUrl.includes("127.0.0.1")
 
+    // Remove automatic detection for production domains
     return isDeveloper
   }
 
   /**
    * Enable developer mode (for developers only)
    */
-  enableDevMode(password = ""): boolean {
-    // Simple developer verification or auto-detect
-    if (password === "ansvr2024" || this.detectDeveloperMode() || password === "") {
+  enableDevMode(): boolean {
+    // Remove password check - only allow enabling via explicit action in development
+    if (this.detectDeveloperMode()) {
       localStorage.setItem("ansvr_dev_mode", "true")
       this.isDeveloper = true
       this.config.enabled = true
@@ -113,7 +112,7 @@ class DebugManager {
       console.log("🔧 Debug logs are now active.")
       return true
     }
-    console.log("🔧 ❌ Invalid password or not in development environment")
+    console.log("🔧 ❌ Not in development environment")
     return false
   }
 
@@ -182,7 +181,7 @@ const debugManager = new DebugManager()
 
 // Export convenient functions
 export const debug = debugManager.createLogger("App")
-export const enableDevMode = (password?: string) => debugManager.enableDevMode(password)
+export const enableDevMode = () => debugManager.enableDevMode()
 export const disableDevMode = () => debugManager.disableDevMode()
 export const getDebugStatus = () => debugManager.getStatus()
 export const createLogger = (component: string) => debugManager.createLogger(component)

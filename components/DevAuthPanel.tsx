@@ -1,87 +1,156 @@
 "use client"
 
-import { useState } from "react"
-import { useAuth } from "@/lib/auth-context"
-import { Settings, User, LogOut, LogIn } from "lucide-react"
+import type React from "react"
 
-export function DevAuthPanel() {
-  const [isOpen, setIsOpen] = useState(false)
-  const { user, signIn, signOut, isDemo } = useAuth()
+import { useState, useEffect } from "react"
+import { createClient } from "@supabase/supabase-js"
 
-  // Only show in development
-  if (process.env.NODE_ENV !== "development") {
-    return null
+export default function DevAuthPanel() {
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [status, setStatus] = useState("")
+  const [user, setUser] = useState<any>(null)
+  const [supabase, setSupabase] = useState<any>(null)
+  const [devMode, setDevMode] = useState(false)
+
+  // Initialize Supabase client
+  useEffect(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (supabaseUrl && supabaseKey) {
+      const client = createClient(supabaseUrl, supabaseKey)
+      setSupabase(client)
+
+      // Check if dev mode is enabled via URL parameter or localStorage
+      const urlParams = new URLSearchParams(window.location.search)
+      const devParam = urlParams.get("dev")
+      const storedDevMode = localStorage.getItem("dev_mode") === "true"
+
+      if (devParam === "true" || storedDevMode) {
+        setDevMode(true)
+        localStorage.setItem("dev_mode", "true")
+      }
+
+      // Check current auth state
+      client.auth.getSession().then(({ data }) => {
+        setUser(data.session?.user || null)
+      })
+
+      // Listen for auth changes
+      const {
+        data: { subscription },
+      } = client.auth.onAuthStateChange((event, session) => {
+        setUser(session?.user || null)
+      })
+
+      return () => {
+        subscription.unsubscribe()
+      }
+    }
+  }, [])
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!supabase) return
+
+    setStatus("Signing in...")
+
+    // Remove dev password functionality
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) {
+        setStatus(`Error: ${error.message}`)
+      } else {
+        setStatus("Login successful!")
+      }
+    } catch (error) {
+      setStatus(`Exception: ${error instanceof Error ? error.message : "Unknown error"}`)
+    }
   }
 
-  const handleDevLogin = async () => {
-    await signIn("owewill22@gmail.com", process.env.NEXT_PUBLIC_DEV_PASSWORD || "dev123456")
+  const handleSignOut = async () => {
+    if (!supabase) return
+
+    // Remove dev auth check
+    try {
+      await supabase.auth.signOut()
+      setStatus("Signed out successfully")
+    } catch (error) {
+      setStatus(`Sign out error: ${error instanceof Error ? error.message : "Unknown error"}`)
+    }
   }
 
-  const handleDevLogout = async () => {
-    await signOut()
+  const toggleDevMode = () => {
+    const newDevMode = !devMode
+    setDevMode(newDevMode)
+    localStorage.setItem("dev_mode", newDevMode ? "true" : "false")
+  }
+
+  if (!supabase) {
+    return <div className="p-4 bg-red-100 text-red-800 rounded">Supabase client not initialized</div>
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
-      {/* Toggle Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-full shadow-lg transition-all"
-        title="Development Auth Panel"
-      >
-        <Settings className="w-5 h-5" />
-      </button>
+    <div className="p-4 border rounded-lg bg-gray-50">
+      <h2 className="text-lg font-semibold mb-4">Developer Authentication Panel</h2>
 
-      {/* Panel */}
-      {isOpen && (
-        <div className="absolute bottom-16 right-0 bg-gray-900 border border-gray-700 rounded-lg p-4 min-w-[280px] shadow-xl">
-          <div className="text-white text-sm font-semibold mb-3 border-b border-gray-700 pb-2">🔧 Dev Auth Panel</div>
+      <div className="mb-4">
+        <button
+          onClick={toggleDevMode}
+          className={`px-3 py-1 rounded text-sm ${devMode ? "bg-green-600 text-white" : "bg-gray-300 text-gray-700"}`}
+        >
+          Dev Mode: {devMode ? "ON" : "OFF"}
+        </button>
+      </div>
 
-          <div className="space-y-3 text-sm">
-            {/* Current Status */}
-            <div className="bg-gray-800 p-2 rounded">
-              <div className="text-gray-400 text-xs mb-1">Status:</div>
-              <div className="text-white flex items-center gap-2">
-                <User className="w-4 h-4" />
-                {user ? (
-                  <span className="text-green-400">
-                    {user.email} {user.email === "owewill22@gmail.com" && "(DEV)"}
-                  </span>
-                ) : (
-                  <span className="text-red-400">Not logged in</span>
-                )}
-              </div>
-              {isDemo && <div className="text-blue-400 text-xs mt-1">🎭 Demo Mode Active</div>}
-            </div>
-
-            {/* Actions */}
-            <div className="space-y-2">
-              {!user ? (
-                <button
-                  onClick={handleDevLogin}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded flex items-center gap-2 transition-colors"
-                >
-                  <LogIn className="w-4 h-4" />
-                  Login as Dev User
-                </button>
-              ) : (
-                <button
-                  onClick={handleDevLogout}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded flex items-center gap-2 transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Logout
-                </button>
-              )}
-            </div>
-
-            {/* Info */}
-            <div className="text-xs text-gray-400 border-t border-gray-700 pt-2">
-              <div>Email: owewill22@gmail.com</div>
-              <div>Auto-login: {localStorage.getItem("ansvr_dev_persistent_login") ? "✅" : "❌"}</div>
-            </div>
+      {user ? (
+        <div>
+          <div className="mb-4 p-3 bg-green-100 rounded">
+            <p>
+              <strong>Logged in as:</strong> {user.email}
+            </p>
+            <p>
+              <strong>User ID:</strong> {user.id}
+            </p>
           </div>
+          <button onClick={handleSignOut} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+            Sign Out
+          </button>
         </div>
+      ) : (
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full p-2 border rounded"
+              placeholder="user@example.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-2 border rounded"
+            />
+          </div>
+
+          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+            Sign In
+          </button>
+
+          {status && <div className="mt-4 p-2 bg-gray-100 rounded">{status}</div>}
+        </form>
       )}
     </div>
   )
